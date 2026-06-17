@@ -1,0 +1,535 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 07:36:24 -0400
+Subject: [PATCH] Fuji: merge Sakura paper-server changes
+
+
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java b/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java
+index ece6db7b9a0dfd535141c0c756947c4898140503..fbe351a877aa0313d522b8b01fc06bcf36d567af 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java
+@@ -42,6 +42,16 @@ public final class IteratorSafeOrderedReferenceSet<E> {
+         this.listElements = (E[])Array.newInstance(arrComponent, arrayCapacity);
+     }
+ 
++    // Sakura start - specialised explosions; add indexOf and rawGet methods
++    public E rawGet(final int index) {
++        return this.listElements[index];
++    }
++
++    public int indexOf(final E element) {
++        return this.indexMap.getInt(element);
++    }
++    // Sakura end - specialised explosions; add indexOf and rawGet methods
++
+     // includes null (gravestone) elements
+     public E[] getListRaw() {
+         return this.listElements;
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2BooleanMap.java b/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2BooleanMap.java
+index aa86882bb7b0712f29d7344009093c0e7a81be84..e6322d8f3ed935d4bafe844b7ca327b2815a774c 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2BooleanMap.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2BooleanMap.java
+@@ -1,48 +1,48 @@
+-package ca.spottedleaf.moonrise.common.map;
+-
+-import it.unimi.dsi.fastutil.longs.Long2BooleanFunction;
+-import it.unimi.dsi.fastutil.longs.Long2BooleanLinkedOpenHashMap;
+-
+-public final class SynchronisedLong2BooleanMap {
+-    private final Long2BooleanLinkedOpenHashMap map = new Long2BooleanLinkedOpenHashMap();
+-    private final int limit;
+-
+-    public SynchronisedLong2BooleanMap(final int limit) {
+-        this.limit = limit;
+-    }
+-
+-    // must hold lock on map
+-    private void purgeEntries() {
+-        while (this.map.size() > this.limit) {
+-            this.map.removeLastBoolean();
+-        }
+-    }
+-
+-    public boolean remove(final long key) {
+-        synchronized (this.map) {
+-            return this.map.remove(key);
+-        }
+-    }
+-
+-    // note:
+-    public boolean getOrCompute(final long key, final Long2BooleanFunction ifAbsent) {
+-        synchronized (this.map) {
+-            if (this.map.containsKey(key)) {
+-                return this.map.getAndMoveToFirst(key);
+-            }
+-        }
+-
+-        final boolean put = ifAbsent.get(key);
+-
+-        synchronized (this.map) {
+-            if (this.map.containsKey(key)) {
+-                return this.map.getAndMoveToFirst(key);
+-            }
+-            this.map.putAndMoveToFirst(key, put);
+-
+-            this.purgeEntries();
+-
+-            return put;
+-        }
+-    }
+-}
+\ No newline at end of file
++package ca.spottedleaf.moonrise.common.map;
++
++import it.unimi.dsi.fastutil.longs.Long2BooleanFunction;
++import it.unimi.dsi.fastutil.longs.Long2BooleanLinkedOpenHashMap;
++
++public final class SynchronisedLong2BooleanMap {
++    private final Long2BooleanLinkedOpenHashMap map = new Long2BooleanLinkedOpenHashMap();
++    private final int limit;
++
++    public SynchronisedLong2BooleanMap(final int limit) {
++        this.limit = limit;
++    }
++
++    // must hold lock on map
++    private void purgeEntries() {
++        while (this.map.size() > this.limit) {
++            this.map.removeLastBoolean();
++        }
++    }
++
++    public boolean remove(final long key) {
++        synchronized (this.map) {
++            return this.map.remove(key);
++        }
++    }
++
++    // note:
++    public boolean getOrCompute(final long key, final Long2BooleanFunction ifAbsent) {
++        synchronized (this.map) {
++            if (this.map.containsKey(key)) {
++                return this.map.getAndMoveToFirst(key);
++            }
++        }
++
++        final boolean put = ifAbsent.get(key);
++
++        synchronized (this.map) {
++            if (this.map.containsKey(key)) {
++                return this.map.getAndMoveToFirst(key);
++            }
++            this.map.putAndMoveToFirst(key, put);
++
++            this.purgeEntries();
++
++            return put;
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2ObjectMap.java b/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2ObjectMap.java
+index dbb51afc6cefe0071fe3ddcd2c1109f2755c3b4d..9652c5765502ab2937b0b61f4353ef3743ef7dcf 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2ObjectMap.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/map/SynchronisedLong2ObjectMap.java
+@@ -1,47 +1,47 @@
+-package ca.spottedleaf.moonrise.common.map;
+-
+-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+-import java.util.function.BiFunction;
+-
+-public final class SynchronisedLong2ObjectMap<V> {
+-    private final Long2ObjectLinkedOpenHashMap<V> map = new Long2ObjectLinkedOpenHashMap<>();
+-    private final int limit;
+-
+-    public SynchronisedLong2ObjectMap(final int limit) {
+-        this.limit = limit;
+-    }
+-
+-    // must hold lock on map
+-    private void purgeEntries() {
+-        while (this.map.size() > this.limit) {
+-            this.map.removeLast();
+-        }
+-    }
+-
+-    public V get(final long key) {
+-        synchronized (this.map) {
+-            return this.map.getAndMoveToFirst(key);
+-        }
+-    }
+-
+-    public V put(final long key, final V value) {
+-        synchronized (this.map) {
+-            final V ret = this.map.putAndMoveToFirst(key, value);
+-            this.purgeEntries();
+-            return ret;
+-        }
+-    }
+-
+-    public V compute(final long key, final BiFunction<? super Long, ? super V, ? extends V> remappingFunction) {
+-        synchronized (this.map) {
+-            // first, compute the value - if one is added, it will be at the last entry
+-            this.map.compute(key, remappingFunction);
+-            // move the entry to first, just in case it was added at last
+-            final V ret = this.map.getAndMoveToFirst(key);
+-            // now purge the last entries
+-            this.purgeEntries();
+-
+-            return ret;
+-        }
+-    }
+-}
+\ No newline at end of file
++package ca.spottedleaf.moonrise.common.map;
++
++import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
++import java.util.function.BiFunction;
++
++public final class SynchronisedLong2ObjectMap<V> {
++    private final Long2ObjectLinkedOpenHashMap<V> map = new Long2ObjectLinkedOpenHashMap<>();
++    private final int limit;
++
++    public SynchronisedLong2ObjectMap(final int limit) {
++        this.limit = limit;
++    }
++
++    // must hold lock on map
++    private void purgeEntries() {
++        while (this.map.size() > this.limit) {
++            this.map.removeLast();
++        }
++    }
++
++    public V get(final long key) {
++        synchronized (this.map) {
++            return this.map.getAndMoveToFirst(key);
++        }
++    }
++
++    public V put(final long key, final V value) {
++        synchronized (this.map) {
++            final V ret = this.map.putAndMoveToFirst(key, value);
++            this.purgeEntries();
++            return ret;
++        }
++    }
++
++    public V compute(final long key, final BiFunction<? super Long, ? super V, ? extends V> remappingFunction) {
++        synchronized (this.map) {
++            // first, compute the value - if one is added, it will be at the last entry
++            this.map.compute(key, remappingFunction);
++            // move the entry to first, just in case it was added at last
++            final V ret = this.map.getAndMoveToFirst(key);
++            // now purge the last entries
++            this.purgeEntries();
++
++            return ret;
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/java/io/papermc/paper/command/PaperVersionCommand.java b/src/main/java/io/papermc/paper/command/PaperVersionCommand.java
+index bfacb856623b5cb6af4f1b65ee89200cdfb1ef13..53cf3637a7264155292f55a05574a15091cb279e 100644
+--- a/src/main/java/io/papermc/paper/command/PaperVersionCommand.java
++++ b/src/main/java/io/papermc/paper/command/PaperVersionCommand.java
+@@ -52,8 +52,10 @@ public class PaperVersionCommand {
+         final PaperVersionCommand command = new PaperVersionCommand();
+ 
+         return Commands.literal("version")
+-            .requires(source -> source.getSender().hasPermission("bukkit.command.version"))
++            // Sakura start - customise version command
+             .then(Commands.argument("plugin", StringArgumentType.word())
++                .requires(source -> source.getSender().hasPermission("bukkit.command.version"))
++                // Sakura end - customise version command
+                 .suggests(command::suggestPlugins)
+                 .executes(command::pluginVersion))
+             .executes(command::serverVersion)
+@@ -130,7 +132,13 @@ public class PaperVersionCommand {
+     }
+ 
+     private int serverVersion(CommandContext<CommandSourceStack> context) {
+-        sendVersion(context.getSource().getSender());
++        // Sakura start - customise version command
++        final CommandSender sender = context.getSource().getSender();
++        //if (sender.hasPermission("bukkit.command.version")) {
++        //    sendVersion(sender);
++        //}
++        me.samsuik.sakura.configuration.SakuraVersionInformation.sendVersionToPlayer(sender);
++        // Sakura end - customise version command
+         return Command.SINGLE_SUCCESS;
+     }
+ 
+diff --git a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+index d175dc4afd8cc2595921d4256c492633b301cd01..d22a4026a0c0ff11c03356db8ac65fdb3dd07964 100644
+--- a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
++++ b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+@@ -178,7 +178,7 @@ public class PaperConfigurations extends Configurations<GlobalConfiguration, Wor
+             .defaultOptions(PaperConfigurations::defaultOptions);
+     }
+ 
+-    private static ConfigurationOptions defaultOptions(ConfigurationOptions options) {
++    public static ConfigurationOptions defaultOptions(ConfigurationOptions options) { // Sakura - sakura configuration files; private -> public
+         return options.serializers(builder -> builder
+             .register(MapSerializer.TYPE, new MapSerializer(false))
+             .register(new EnumValueSerializer())
+diff --git a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+index db23f74b4c02c43ab42cf8db15c400eedf35d343..1a1217635774e6d97b95449933288dc4a15073ca 100644
+--- a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
++++ b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+@@ -81,7 +81,7 @@ public final class InnerClassFieldDiscoverer implements FieldDiscoverer<Map<Fiel
+     }
+ 
+     @SuppressWarnings("unchecked")
+-    private static InnerClassFieldDiscoverer create(final Map<Class<?>, Object> overrides, final List<Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>>> fieldProcessors) {
++    public static InnerClassFieldDiscoverer create(final Map<Class<?>, Object> overrides, final List<Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>>> fieldProcessors) { // Sakura - sakura configuration files; private -> public
+         final Map<Class<? extends Annotation>, List<Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>>>> processors = new LinkedHashMap<>();
+         for (final Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>> definition : fieldProcessors) {
+             processors.computeIfAbsent(definition.annotation(), k -> new ArrayList<>()).add(definition);
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 403277294d03cc21a073a8296d9f272f55c61f01..5cf5a6415751348a0e4214ef70bda66d974369df 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -1013,6 +1013,7 @@ public final class CraftServer implements Server {
+         this.console.paperConfigurations.reloadConfigs(this.console);
+         org.purpurmc.purpur.PurpurConfig.init((File) console.options.valueOf("purpur-settings")); // Purpur - Purpur config files
+         this.console.galeConfigurations.reloadConfigs(this.console); // Gale - Gale configuration
++        this.console.sakuraConfigurations.reloadConfigs(this.console); // Sakura - sakura configuration files; missing comment above :<
+         for (ServerLevel world : this.console.getAllLevels()) {
+             // world.serverLevelData.setDifficulty(config.difficulty); // Paper - per level difficulty
+             world.setSpawnSettings(world.isSpawningMonsters()); // Paper - per level difficulty (from MinecraftServer#setDifficulty(ServerLevel, Difficulty, boolean))
+@@ -1045,6 +1046,7 @@ public final class CraftServer implements Server {
+         this.reloadData();
+         org.spigotmc.SpigotConfig.registerCommands(); // Spigot
+         io.papermc.paper.command.PaperCommands.registerCommands(this.console); // Paper
++        me.samsuik.sakura.command.SakuraCommands.registerCommands(this.console); // Sakura - sakura configuration files
+         this.spark.registerCommandBeforePlugins(this); // Paper - spark
+         org.purpurmc.purpur.PurpurConfig.registerCommands(); // Purpur - Purpur config files
+         this.overrideAllCommandBlockCommands = this.commandsConfiguration.getStringList("command-block-overrides").contains("*");
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+index 2b793c0af8504e43f8710ab037195e677d57f4a8..94a04bb1bfb3a44eb15ad45635ec7adea2db5a6e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+@@ -293,6 +293,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+         ).isValid();
+     }
+     // Paper end
++    // Sakura start - local config api
++    @Override
++    public final me.samsuik.sakura.configuration.local.LocalConfigurationAccessor localConfig() {
++        return this.getHandle().localConfig();
++    }
++    // Sakura end - local config api
+ 
+     private static final Random rand = new Random();
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
+index e6ea34b18c6db63efa77bb67d3484e4d66315ed6..b76945a214e040e3a8671e94761e418a6554d6fa 100644
+--- a/src/main/java/org/bukkit/craftbukkit/Main.java
++++ b/src/main/java/org/bukkit/craftbukkit/Main.java
+@@ -147,6 +147,14 @@ public class Main {
+                     .describedAs("Yml file");
+                 // Purpur end - Purpur config files
+ 
++                // Sakura start - sakura configuration files
++                acceptsAll(asList("sakura-dir", "sakura-settings-directory"), "Directory for Sakura settings")
++                    .withRequiredArg()
++                    .ofType(File.class)
++                    .defaultsTo(new File(me.samsuik.sakura.configuration.SakuraConfigurations.CONFIG_DIR))
++                    .describedAs("Config directory");
++                // Sakura end - sakura configuration files
++
+                 this.accepts("server-name", "Name of the server")
+                         .withRequiredArg()
+                         .ofType(String.class)
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index df7385f04652afdd9156575ac47d886eefb49bd2..e125b30f5b2cb771d34a772de52409a5d9e8b42e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -133,6 +133,18 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+     }
+     // Purpur end - API for any mob to burn daylight
+ 
++    // Sakura start - entity pushed by fluid api
++    @Override
++    public final boolean isPushedByFluid() {
++        return this.getHandle().isPushedByFluid();
++    }
++
++    @Override
++    public final void setPushedByFluid(final boolean push) {
++        this.getHandle().pushedByFluid = push;
++    }
++    // Sakura end - entity pushed by fluid api
++
+     public static <T extends Entity> CraftEntity getEntity(CraftServer server, T entity) {
+         Preconditions.checkArgument(entity != null, "Unknown entity");
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java
+index eacdc2467fae5ef7e853012329e69ceb9c514c84..9f6371864cef8cc6cc69b65b56bed9bfcd1ea245 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java
+@@ -14,6 +14,39 @@ public class CraftFallingBlock extends CraftEntity implements FallingBlock {
+         super(server, entity);
+     }
+ 
++    // Sakura start - falling block height parity api
++    @Override
++    public final void setHeightParity(final boolean heightParity) {
++        this.getHandle().heightParity = heightParity;
++    }
++
++    @Override
++    public final boolean getHeightParity() {
++        return this.getHandle().heightParity;
++    }
++    // Sakura end - falling block height parity api
++    // Sakura start - merge cannon entities
++    @Override
++    public final me.samsuik.sakura.entity.merge.MergeLevel getMergeLevel() {
++        return this.getHandle().getMergeEntityData().mergeLevel;
++    }
++
++    @Override
++    public final void setMergeLevel(final me.samsuik.sakura.entity.merge.MergeLevel mergeLevel) {
++        this.getHandle().getMergeEntityData().mergeLevel = mergeLevel;
++    }
++
++    @Override
++    public final int getStacked() {
++        return this.getHandle().getMergeEntityData().count;
++    }
++
++    @Override
++    public final void setStacked(final int stacked) {
++        this.getHandle().getMergeEntityData().count = stacked;
++    }
++    // Sakura end - merge cannon entities
++
+     @Override
+     public FallingBlockEntity getHandle() {
+         return (FallingBlockEntity) this.entity;
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index 268d47b9d0c1fe53225ede7413c758ecd1001280..4ee63d8f5e4421fb5c24ca4b039e260d1495d957 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -252,6 +252,18 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         this.firstPlayed = System.currentTimeMillis();
+     }
+ 
++    // Sakura start - entity tracking range modifier
++    @Override
++    public final double getTrackingRangeModifier() {
++        return this.getHandle().trackingRangeModifier * 100.0;
++    }
++
++    @Override
++    public final void setTrackingRangeModifier(final double modifier) {
++        this.getHandle().trackingRangeModifier = modifier / 100.0;
++    }
++    // Sakura end - entity tracking range modifier
++
+     @Override
+     public ServerPlayer getHandle() {
+         return (ServerPlayer) this.entity;
+@@ -2264,6 +2276,11 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+             handle.expToDrop = data.getIntOr("expToDrop", 0);
+             handle.keepLevel = data.getBooleanOr("keepLevel", false);
+         });
++        // Sakura start - client visibility settings; load from nbt
++        input.child("sakura").ifPresent(sakura -> {
++            this.getHandle().visibilitySettings.loadData(sakura);
++        });
++        // Sakura end - client visibility settings; load from nbt
+     }
+ 
+     public void setExtraData(ValueOutput output) {
+@@ -2285,6 +2302,10 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         paper.putLong("LastLogin", handle.loginTime);
+         paper.putLong("LastSeen", System.currentTimeMillis());
+         // Paper end
++        // Sakura start - client visibility settings; save to nbt
++        final ValueOutput sakura = output.child("sakura");
++        this.getHandle().visibilitySettings.saveData(sakura);
++        // Sakura end - client visibility settings; save to nbt
+     }
+ 
+     @Override
+@@ -2882,6 +2903,13 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         return this.getHandle().allowsListing();
+     }
+ 
++    // Sakura start - client visibility settings; api
++    @Override
++    public final me.samsuik.sakura.player.visibility.VisibilitySettings getVisibility() {
++        return this.getHandle().visibilitySettings;
++    }
++    // Sakura end - client visibility settings; api
++
+     // Paper start
+     @Override
+     public net.kyori.adventure.text.Component displayName() {
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftTNTPrimed.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftTNTPrimed.java
+index 4b391fdd35d40831e22f486e08b7766c5d802533..f40ad68cd28b46e38da90651cae33d637fcb940d 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftTNTPrimed.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftTNTPrimed.java
+@@ -13,6 +13,28 @@ public class CraftTNTPrimed extends CraftEntity implements TNTPrimed {
+         super(server, entity);
+     }
+ 
++    // Sakura start - merge cannon entities
++    @Override
++    public final me.samsuik.sakura.entity.merge.MergeLevel getMergeLevel() {
++        return this.getHandle().getMergeEntityData().mergeLevel;
++    }
++
++    @Override
++    public final void setMergeLevel(final me.samsuik.sakura.entity.merge.MergeLevel mergeLevel) {
++        this.getHandle().getMergeEntityData().mergeLevel = mergeLevel;
++    }
++
++    @Override
++    public final int getStacked() {
++        return this.getHandle().getMergeEntityData().count;
++    }
++
++    @Override
++    public final void setStacked(final int stacked) {
++        this.getHandle().getMergeEntityData().count = stacked;
++    }
++    // Sakura end - merge cannon entities
++
+     @Override
+     public PrimedTnt getHandle() {
+         return (PrimedTnt) this.entity;
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index 138d8c1f78dea434cb7f1b8b1e39bdf38e55e58a..531b469311a0f6fd541befa4885909b10e38525d 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -1033,6 +1033,13 @@ public class CraftEventFactory {
+         victim.expToDrop = event.getDroppedExp();
+         lootCheck.run(); // Paper - advancement triggers before destroying items
+ 
++        // Sakura start - mobs insert items into hoppers on death
++        final ServerLevel serverLevel = world.getHandle();
++        if (serverLevel.sakuraConfig().entity.insertItemsIntoHoppersOnDeath) {
++            me.samsuik.sakura.container.InsertItemsIntoHoppers.onMobDeath(serverLevel, entity.getHandle(), drops);
++        }
++        // Sakura end - mobs insert items into hoppers on death
++
+         // Paper start - Restore vanilla drops behavior
+         for (Entity.DefaultDrop drop : drops) {
+             if (drop == null) continue;
+diff --git a/src/main/java/org/spigotmc/SpigotConfig.java b/src/main/java/org/spigotmc/SpigotConfig.java
+index f21403e8d7b8365030b66620fa320290caa6b70a..7b7b66ba7edebcc3d94efd16ba009516b2d45e00 100644
+--- a/src/main/java/org/spigotmc/SpigotConfig.java
++++ b/src/main/java/org/spigotmc/SpigotConfig.java
+@@ -227,7 +227,7 @@ public class SpigotConfig {
+     }
+ 
+     private static void tpsCommand() {
+-        SpigotConfig.commands.put("tps", new TicksPerSecondCommand("tps"));
++        // Sakura - track tick information; replace tps command
+     }
+ 
+     public static int playerSample;
