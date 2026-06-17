@@ -29,3 +29,7 @@ leaf-server/src/minecraft
 paper-api
 paper-server
 .fuji/
+
+.fuji/
+docs/fuji/
+test-run/
