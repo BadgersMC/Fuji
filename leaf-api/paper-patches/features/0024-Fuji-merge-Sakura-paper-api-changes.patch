@@ -1,0 +1,172 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 07:36:25 -0400
+Subject: [PATCH] Fuji: merge Sakura paper-api changes
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/exception/ServerPluginEnableDisableException.java b/src/main/java/com/destroystokyo/paper/exception/ServerPluginEnableDisableException.java
+index f016ba3b1b62e554a9bacbb9635f2dbe441b3c4e..f54d62c63357122b946f9a3157c2649f7455564c 100644
+--- a/src/main/java/com/destroystokyo/paper/exception/ServerPluginEnableDisableException.java
++++ b/src/main/java/com/destroystokyo/paper/exception/ServerPluginEnableDisableException.java
+@@ -1,20 +1,20 @@
+-package com.destroystokyo.paper.exception;
+-
+-import org.bukkit.plugin.Plugin;
+-
+-/**
+- * Thrown whenever there is an exception with any enabling or disabling of plugins.
+- */
+-public class ServerPluginEnableDisableException extends ServerPluginException {
+-    public ServerPluginEnableDisableException(String message, Throwable cause, Plugin responsiblePlugin) {
+-        super(message, cause, responsiblePlugin);
+-    }
+-
+-    public ServerPluginEnableDisableException(Throwable cause, Plugin responsiblePlugin) {
+-        super(cause, responsiblePlugin);
+-    }
+-
+-    protected ServerPluginEnableDisableException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace, Plugin responsiblePlugin) {
+-        super(message, cause, enableSuppression, writableStackTrace, responsiblePlugin);
+-    }
+-}
+\ No newline at end of file
++package com.destroystokyo.paper.exception;
++
++import org.bukkit.plugin.Plugin;
++
++/**
++ * Thrown whenever there is an exception with any enabling or disabling of plugins.
++ */
++public class ServerPluginEnableDisableException extends ServerPluginException {
++    public ServerPluginEnableDisableException(String message, Throwable cause, Plugin responsiblePlugin) {
++        super(message, cause, responsiblePlugin);
++    }
++
++    public ServerPluginEnableDisableException(Throwable cause, Plugin responsiblePlugin) {
++        super(cause, responsiblePlugin);
++    }
++
++    protected ServerPluginEnableDisableException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace, Plugin responsiblePlugin) {
++        super(message, cause, enableSuppression, writableStackTrace, responsiblePlugin);
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
+index 882bd1374a6399e8a98a1d0b910f72c725ffe03e..c540270bda631abe4bf96b61e6372a3549eecc2f 100644
+--- a/src/main/java/org/bukkit/Bukkit.java
++++ b/src/main/java/org/bukkit/Bukkit.java
+@@ -127,6 +127,20 @@ public final class Bukkit {
+         // Paper end
+     }
+ 
++    // Sakura start - customise version command; expose git information
++    @NotNull
++    public static String getGitInformation() {
++        final io.papermc.paper.ServerBuildInfo version = io.papermc.paper.ServerBuildInfo.buildInfo();
++        final String gitBranch = version.gitBranch().orElse("Dev");
++        final String gitCommit = version.gitCommit().orElse("");
++        String branchMsg = " on " + gitBranch;
++        if ("master".equals(gitBranch) || "main".equals(gitBranch)) {
++            branchMsg = "";  // Don't show branch on main/master
++        }
++        return "(Git: " + gitCommit + branchMsg + ")";
++    }
++    // Sakura end - customise version command; expose git information
++
+     /**
+      * Gets the name of this server implementation.
+      *
+diff --git a/src/main/java/org/bukkit/entity/Entity.java b/src/main/java/org/bukkit/entity/Entity.java
+index 49981db2398a3f88c1d62c91e35d637c4b92f876..dd02ad748eb41aa43bb2073be09ead5974c48822 100644
+--- a/src/main/java/org/bukkit/entity/Entity.java
++++ b/src/main/java/org/bukkit/entity/Entity.java
+@@ -39,6 +39,22 @@ import org.jetbrains.annotations.Nullable;
+  */
+ public interface Entity extends Metadatable, CommandSender, Nameable, PersistentDataHolder, net.kyori.adventure.text.event.HoverEventSource<net.kyori.adventure.text.event.HoverEvent.ShowEntity>, net.kyori.adventure.sound.Sound.Emitter, DataComponentView { // Paper
+ 
++    // Sakura start - entity pushed by fluid api
++    /**
++     * Gets if the entity will be pushed by fluid.
++     *
++     * @return if this entity can be pushed by fluid.
++     */
++    boolean isPushedByFluid();
++
++    /**
++     * Sets if the entity will be pushed by fluid.
++     *
++     * @param state whether entity should be pushed by fluid
++     */
++    void setPushedByFluid(final boolean state);
++    // Sakura end - entity pushed by fluid api
++
+     /**
+      * Gets the entity's current position
+      *
+diff --git a/src/main/java/org/bukkit/entity/FallingBlock.java b/src/main/java/org/bukkit/entity/FallingBlock.java
+index 0f709b03bc3040c785f2cf02abe790e6a85685af..93d96e00e4b1c2ea757c2f09d6fdbb0c64f1da10 100644
+--- a/src/main/java/org/bukkit/entity/FallingBlock.java
++++ b/src/main/java/org/bukkit/entity/FallingBlock.java
+@@ -7,7 +7,23 @@ import org.jetbrains.annotations.NotNull;
+ /**
+  * Represents a falling block
+  */
+-public interface FallingBlock extends Entity {
++public interface FallingBlock extends Entity, me.samsuik.sakura.entity.merge.Mergeable { // Sakura - merge cannon entities api
++
++    // Sakura start - falling block height parity api
++    /**
++     * Gets if falling block has height parity
++     *
++     * @return parity
++     */
++    boolean getHeightParity();
++
++    /**
++     * Sets falling block height parity
++     *
++     * @param parity value
++     */
++    void setHeightParity(final boolean parity);
++    // Sakura end - falling block height parity api
+ 
+     /**
+      * Get the Material of the falling block
+diff --git a/src/main/java/org/bukkit/entity/Player.java b/src/main/java/org/bukkit/entity/Player.java
+index 7ca713c737f977446488486095a028d7a8e8353c..c9bc1f323e580cade56fda16ef14f6d2fb25bff4 100644
+--- a/src/main/java/org/bukkit/entity/Player.java
++++ b/src/main/java/org/bukkit/entity/Player.java
+@@ -68,6 +68,20 @@ import org.jspecify.annotations.Nullable;
+ @NullMarked
+ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginMessageRecipient, net.kyori.adventure.identity.Identified, net.kyori.adventure.bossbar.BossBarViewer, com.destroystokyo.paper.network.NetworkClient { // Paper
+ 
++    // Sakura start - entity tracking range modifier
++    double getTrackingRangeModifier();
++
++    void setTrackingRangeModifier(final double modifier);
++    // Sakura end - entity tracking range modifier
++    // Sakura start - client visibility settings api
++    /**
++     * Server-side api to disable sending visual effects to the client.
++     *
++     * @return visibility api
++     */
++    me.samsuik.sakura.player.visibility.VisibilitySettings getVisibility();
++    // Sakura end - client visibility settings api
++
+     // Paper start
+     @Override
+     default net.kyori.adventure.identity.Identity identity() {
+diff --git a/src/main/java/org/bukkit/entity/TNTPrimed.java b/src/main/java/org/bukkit/entity/TNTPrimed.java
+index 8ef2fced7b303cb47f73ddd36a13994bae3d650e..7619756e4d3be718d711d1260487064e54335946 100644
+--- a/src/main/java/org/bukkit/entity/TNTPrimed.java
++++ b/src/main/java/org/bukkit/entity/TNTPrimed.java
+@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
+ /**
+  * Represents a Primed TNT.
+  */
+-public interface TNTPrimed extends Explosive {
++public interface TNTPrimed extends Explosive, me.samsuik.sakura.entity.merge.Mergeable { // Sakura - merge cannon entities api
+ 
+     /**
+      * Set the number of ticks until the TNT blows up after being primed.

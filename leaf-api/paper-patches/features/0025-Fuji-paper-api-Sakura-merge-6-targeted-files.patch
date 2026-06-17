@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 08:11:01 -0400
+Subject: [PATCH] Fuji: paper-api Sakura merge (6 targeted files)
+
+
+diff --git a/src/main/java/org/bukkit/World.java b/src/main/java/org/bukkit/World.java
+index c156468aaef9259001f402b0bc83e53a8995e6d4..d53cde21f5e5edf598c46de6813444c71c8f7a4c 100644
+--- a/src/main/java/org/bukkit/World.java
++++ b/src/main/java/org/bukkit/World.java
+@@ -4627,6 +4627,11 @@ public interface World extends RegionAccessor, WorldInfo, PluginMessageRecipient
+     void setSendViewDistance(int viewDistance);
+     // Paper end - view distance api
+ 
++    // Sakura start - local config api
++    @NotNull
++    me.samsuik.sakura.configuration.local.LocalConfigurationAccessor localConfig();
++    // Sakura end - local config api
++
+     /**
+      * Gets all generated structures that intersect the chunk at the given
+      * coordinates. <br>
