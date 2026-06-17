@@ -1,8 +1,8 @@
-name: Build Fuji
+name: Build & Release Fuji
 
-# Builds Fuji on every source/patch change so a broken build is caught
-# immediately, and publishes the paperclip jar as a downloadable artifact.
-# Skips docs/README/asset-only changes.
+# Builds Fuji on every source/patch change. On a push to `fuji` it also publishes
+# a GitHub Release with the paperclip jar (auto build-numbered). Pull requests and
+# manual dispatches build + upload an artifact only (no release).
 
 on:
   push:
@@ -26,7 +26,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-${{ github.ref }}
@@ -35,6 +35,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      MC_VERSION: '1.21.11'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,9 +73,46 @@ jobs:
       - name: Build paperclip jar
         run: ./gradlew createMojmapPaperclipJar --stacktrace --no-daemon
 
-      - name: Upload paperclip jar
+      - name: Upload paperclip jar (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: fuji-paperclip-1.21.11
+          name: fuji-paperclip-${{ env.MC_VERSION }}
           path: leaf-server/build/libs/*paperclip*.jar
           if-no-files-found: error
+
+      # ---- Release (only on push to fuji) ----
+      - name: Prepare release jar
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fuji'
+        id: prep
+        run: |
+          BUILD="${{ github.run_number }}"
+          SRC=$(ls leaf-server/build/libs/*paperclip*mojmap.jar | head -1)
+          OUT="fuji-${MC_VERSION}-build.${BUILD}.jar"
+          cp "$SRC" "$OUT"
+          echo "jar=$OUT" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$OUT" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fuji'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ steps.prep.outputs.build }}
+          name: Fuji ${{ env.MC_VERSION }} — build ${{ steps.prep.outputs.build }}
+          files: ${{ steps.prep.outputs.jar }}
+          generate_release_notes: true
+          make_latest: true
+          body: |
+            **Fuji ${{ env.MC_VERSION }}** · build `${{ steps.prep.outputs.build }}` — *the peak of cannoning* 🗻
+
+            | | |
+            |---|---|
+            | Minecraft | `${{ env.MC_VERSION }}` |
+            | Java | `21` |
+            | SHA-256 | `${{ steps.prep.outputs.sha256 }}` |
+
+            Run with: `java -Xms4G -Xmx4G -jar ${{ steps.prep.outputs.jar }} --nogui`
+
+            ---
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
