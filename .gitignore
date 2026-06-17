@@ -33,3 +33,4 @@ paper-server
 .fuji/
 docs/fuji/
 test-run/
+!.idea/icon.png
