@@ -1,0 +1,20 @@
+--- a/net/minecraft/world/level/block/RedStoneWireBlock.java
++++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
+@@ -266,7 +_,7 @@
+ 
+     // Paper start - Optimize redstone (Eigencraft)
+     // The bulk of the new functionality is found in RedstoneWireTurbo.java
+-    public io.papermc.paper.redstone.RedstoneWireTurbo turbo = new io.papermc.paper.redstone.RedstoneWireTurbo(this);
++    io.papermc.paper.redstone.RedstoneWireTurbo turbo = new io.papermc.paper.redstone.RedstoneWireTurbo(this);
+ 
+     /*
+      * Modified version of pre-existing updateSurroundingRedstone, which is called from
+@@ -445,7 +_,7 @@
+         return shouldConnectTo(state, null);
+     }
+ 
+-    public static boolean shouldConnectTo(BlockState state, @Nullable Direction direction) {
++    protected static boolean shouldConnectTo(BlockState state, @Nullable Direction direction) {
+         if (state.is(Blocks.REDSTONE_WIRE)) {
+             return true;
+         } else if (state.is(Blocks.REPEATER)) {

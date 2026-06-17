@@ -1,0 +1,161 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 08:11:00 -0400
+Subject: [PATCH] Fuji: compile fixes (checkInsideBlocks, distanceToSqr,
+ ChunkEntitySlices, NonNullList, ThrownEnderpearl, config)
+
+
+diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java
+index 09dd84d9866a3bbb7282b3277be99a5c16cb0a74..59b34714c93ae96cdb0d94fd5e5f01ad7ec642bd 100644
+--- a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java
++++ b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java
+@@ -319,6 +319,12 @@ public final class ChunkEntitySlices {
+         return true;
+     }
+ 
++    // Sakura start - optimise paper explosions; expose slice entity list
++    public Entity[] getSectionEntities(final int sectionY) {
++        return this.allEntities.getSectionEntities(sectionY);
++    }
++    // Sakura end - optimise paper explosions; expose slice entity list
++
+     public void getHardCollidingEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate) {
+         this.hardCollidingEntities.getEntities(except, box, into, predicate);
+     }
+@@ -330,7 +336,14 @@ public final class ChunkEntitySlices {
+ 
+     public boolean getEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
+                                final int maxCount) {
+-        return this.allEntities.getEntitiesLimited(except, box, into, predicate, maxCount);
++        // Sakura start - add maxSearch to getEntities
++        return this.getEntities(except, box, into, predicate, maxCount, Integer.MAX_VALUE);
++    }
++
++    public boolean getEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
++                               final int maxCount, final int maxSearch) {
++        return this.allEntities.getEntitiesLimited(except, box, into, predicate, maxCount, maxSearch);
++        // Sakura end - add maxSearch to getEntities
+     }
+ 
+     public <T extends Entity> void getEntities(final EntityType<?> type, final AABB box, final List<? super T> into,
+@@ -533,6 +546,17 @@ public final class ChunkEntitySlices {
+             }
+         }
+ 
++        // Sakura start - optimise paper explosions; expose slice entity list
++        public Entity[] getSectionEntities(final int sectionY) {
++            final BasicEntityList<Entity> entityList = this.entitiesBySection[sectionY - this.slices.minSection];
++            if (entityList != null) {
++                return entityList.storage;
++            } else {
++                return new Entity[0];
++            }
++        }
++        // Sakura end - optimise paper explosions; expose slice entity list
++
+         public void getEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate) {
+             if (this.count == 0) {
+                 return;
+@@ -590,6 +614,13 @@ public final class ChunkEntitySlices {
+ 
+         public boolean getEntitiesLimited(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
+                                           final int maxCount) {
++            // Sakura start - add maxSearch to getEntities
++            return this.getEntitiesLimited(except, box, into, predicate, maxCount, Integer.MAX_VALUE);
++        }
++
++        public boolean getEntitiesLimited(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
++                                          final int maxCount, final int maxSearch) {
++            // Sakura end - add maxSearch to getEntities
+             if (this.count == 0) {
+                 return false;
+             }
+@@ -620,11 +651,13 @@ public final class ChunkEntitySlices {
+                 final Entity[] storage = list.storage;
+                 final int len = Math.min(storage.length, list.size());
+ 
++                // Sakura start - add maxSearch to getEntities
++                final int offset = this.slices.world.random.nextInt(len);
+                 for (int i = 0; i < len; ++i) {
+-                    final Entity entity = storage[i];
+-                    if (entity == null || entity == except) {
+-                        continue;
+-                    }
++                    final int pos = (i + offset) % len;
++                    final Entity entity = storage[pos];
++                    if (i > maxSearch) break;
++                    // Sakura end - add maxSearch to getEntities
+ 
+                     // Inline AABB#intersects to avoid a method call and use the cached AABB fields.
+                     final AABB entityBB = entity.getBoundingBox();
+diff --git a/net/minecraft/core/NonNullList.java b/net/minecraft/core/NonNullList.java
+index 21e6190ae894a73cde27c6321c602acab2098cc0..173866bd1a6cad788c8afa575626c9da5284c7f2 100644
+--- a/net/minecraft/core/NonNullList.java
++++ b/net/minecraft/core/NonNullList.java
+@@ -9,7 +9,7 @@ import org.jspecify.annotations.Nullable;
+ 
+ public class NonNullList<E> extends AbstractList<E> {
+     public final List<E> list; // Leaves - private -> public
+-    private final @Nullable E defaultValue;
++    public final @Nullable E defaultValue; // Sakura - expose defaultValue (was AT)
+ 
+     public static <E> NonNullList<E> create() {
+         return new NonNullList<>(Lists.newArrayList(), null);
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index f42baa112e65cfe544cc295205cb77f3cebb636a..7fc34434bd2a1f6837c6c8d40cbbf3a3197c700a 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -2114,7 +2114,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+     }
+ 
+     // Leaf start - optimize checkInsideBlocks calls
+-    private int checkInsideBlocks(Vec3 from, Vec3 to, InsideBlockEffectApplier.StepBasedCollector stepBasedCollector, LongSet visited, int maxSteps) {
++    private int checkInsideBlocks(Vec3 from, Vec3 to, InsideBlockEffectApplier.StepBasedCollector stepBasedCollector, LongSet visited, int maxSteps, net.minecraft.world.level.chunk.ChunkAccess[] chunkCache) { // Sakura - accept chunkCache (Leaf uses own caching)
+         final Level level = this.level();
+         AABB aabb = this.getBoundingBox().move(to.subtract(this.position())).deflate(1.0E-5F);
+         final net.minecraft.world.level.chunk.ChunkAccess[] cachedChunk = {null};
+@@ -2128,7 +2128,6 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+             from,
+             to,
+             aabb,
+-            mechanicsTarget, // Sakura - configure server mechanics
+             (pos, index) -> {
+                 if (!this.isAlive()) {
+                     return false;
+@@ -6082,7 +6081,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+         return org.dreeam.leaf.util.LeafConstants.ENABLE_FMA ? Math.fma(dx, dx, Math.fma(dy, dy, dz * dz)) : dx * dx + dy * dy + dz * dz;
+     }
+ 
+-    public final double distanceToSqr(Vec3 pos) {
++    public double distanceToSqr(Vec3 pos) { // Sakura - allow override for cannon entities
+         final double dx = this.getX() - pos.x;
+         final double dy = this.getY() - pos.y;
+         final double dz = this.getZ() - pos.z;
+diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
+index 94b6e2c510809fe4af5100f61e0d43dfb0ca6a37..d0f89c3cae910ba0dd5459db64871c6887b2cea0 100644
+--- a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
++++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
+@@ -145,12 +145,13 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+                     // Sakura end - prevent ender pearls teleporting inside blocks
+                     if (serverPlayer.connection.isAcceptingMessages()) {
+                         // Leaf start - SparklyPaper - parallel world ticking - handling for pearl teleportation cross-dimension
++                        final Vec3 teleportTarget = vec3; // Fuji - final copy for lambda capture (Sakura reassigns vec3)
+                         java.util.function.Consumer<ServerPlayer> teleportPlayerCrossDimensionTask = taskServerPlayer -> {
+                         // CraftBukkit start
+                         // Store pre teleportation position as the teleport has been moved up.
+                         final double preTeleportX = serverPlayer.getX(), preTeleportY = serverPlayer.getY(), preTeleportZ = serverPlayer.getZ();
+                         final float preTeleportYRot = serverPlayer.getYRot(), preTeleportXRot = serverPlayer.getXRot();
+-                        ServerPlayer serverPlayer1 = taskServerPlayer.teleport(new TeleportTransition(serverLevel, vec3, Vec3.ZERO, 0.0F, 0.0F, Relative.union(Relative.ROTATION, Relative.DELTA), TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.ENDER_PEARL));
++                        ServerPlayer serverPlayer1 = taskServerPlayer.teleport(new TeleportTransition(serverLevel, teleportTarget, Vec3.ZERO, 0.0F, 0.0F, Relative.union(Relative.ROTATION, Relative.DELTA), TeleportTransition.DO_NOTHING, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.ENDER_PEARL));
+                         if (serverPlayer1 == null) {
+                             this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.HIT);
+                             return;
+@@ -182,7 +183,7 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+                             serverPlayer1.hurtServer(taskServerPlayer.level(), this.damageSources().enderPearl().eventEntityDamager(this), this.level().purpurConfig.enderPearlDamage); // CraftBukkit // Paper - fix DamageSource API // Purpur - Configurable Ender Pearl damage
+                         }
+ 
+-                        this.playSound(serverLevel, vec3);
++                        this.playSound(serverLevel, teleportTarget);
+                         };
+                         if (org.dreeam.leaf.config.modules.async.SparklyPaperParallelWorldTicking.enabled) {
+                             serverPlayer.getBukkitEntity().taskScheduler.schedule(teleportPlayerCrossDimensionTask, entity -> {

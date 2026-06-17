@@ -1,0 +1,66 @@
+--- a/net/minecraft/world/level/ServerExplosion.java
++++ b/net/minecraft/world/level/ServerExplosion.java
+@@ -51,8 +_,8 @@
+     private final boolean fire;
+     private final Explosion.BlockInteraction blockInteraction;
+     private final ServerLevel level;
+-    protected Vec3 center;
+-    protected final @Nullable Entity source;
++    private final Vec3 center;
++    private final @Nullable Entity source;
+     private final float radius;
+     private final DamageSource damageSource;
+     private final ExplosionDamageCalculator damageCalculator;
+@@ -101,13 +_,13 @@
+     // resistance = (res + 0.3F) * 0.3F;
+     // so for resistance = 0, we need res = -0.3F
+     private static final Float ZERO_RESISTANCE = Float.valueOf(-0.3f);
+-    protected it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<ca.spottedleaf.moonrise.patches.collisions.ExplosionBlockCache> blockCache = null;
++    private it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<ca.spottedleaf.moonrise.patches.collisions.ExplosionBlockCache> blockCache = null;
+     private long[] chunkPosCache = null;
+     private net.minecraft.world.level.chunk.LevelChunk[] chunkCache = null;
+-    protected ca.spottedleaf.moonrise.patches.collisions.ExplosionBlockCache[] directMappedBlockCache;
++    private ca.spottedleaf.moonrise.patches.collisions.ExplosionBlockCache[] directMappedBlockCache;
+     private BlockPos.MutableBlockPos mutablePos;
+ 
+-    protected ca.spottedleaf.moonrise.patches.collisions.ExplosionBlockCache getOrCacheExplosionBlock(final int x, final int y, final int z,
++    private ca.spottedleaf.moonrise.patches.collisions.ExplosionBlockCache getOrCacheExplosionBlock(final int x, final int y, final int z,
+                                                                                                     final long key, final boolean calculateResistance) {
+         ca.spottedleaf.moonrise.patches.collisions.ExplosionBlockCache ret = this.blockCache.get(key);
+         if (ret != null) {
+@@ -378,7 +_,7 @@
+         return this.center;
+     }
+ 
+-    protected List<BlockPos> calculateExplodedPositions() {
++    private List<BlockPos> calculateExplodedPositions() {
+         // Paper start - collision optimisations
+         final ObjectArrayList<BlockPos> ret = new ObjectArrayList<>();
+ 
+@@ -555,7 +_,7 @@
+         }
+     }
+ 
+-    protected void interactWithBlocks(List<BlockPos> blocks) {
++    private void interactWithBlocks(List<BlockPos> blocks) {
+         List<ServerExplosion.StackCollector> list = new ArrayList<>();
+         Util.shuffle(blocks, this.level.random);
+ 
+@@ -675,7 +_,7 @@
+         stackCollectors.add(new ServerExplosion.StackCollector(pos, stack));
+     }
+ 
+-    protected boolean interactsWithBlocks() {
++    private boolean interactsWithBlocks() {
+         return this.blockInteraction != Explosion.BlockInteraction.KEEP;
+     }
+ 
+@@ -742,7 +_,7 @@
+ 
+ 
+     // Paper start - Optimize explosions
+-    protected float getBlockDensity(Vec3 vec3d, Entity entity) {
++    private float getBlockDensity(Vec3 vec3d, Entity entity) {
+         if (!this.level.paperConfig().environment.optimizeExplosions) {
+             return this.getSeenFraction(vec3d, entity, this.directMappedBlockCache, this.mutablePos); // Paper - collision optimisations
+         }

@@ -1,0 +1,47 @@
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -271,7 +_,7 @@
+     public boolean verticalCollisionBelow;
+     public boolean minorHorizontalCollision;
+     public boolean hurtMarked;
+-    public Vec3 stuckSpeedMultiplier = Vec3.ZERO;
++    protected Vec3 stuckSpeedMultiplier = Vec3.ZERO;
+     private Entity.@Nullable RemovalReason removalReason;
+     public static final float DEFAULT_BB_WIDTH = 0.6F;
+     public static final float DEFAULT_BB_HEIGHT = 1.8F;
+@@ -323,7 +_,7 @@
+     private final double[] pistonDeltas = new double[]{0.0, 0.0, 0.0};
+     private long pistonDeltasGameTime;
+     protected EntityDimensions dimensions;
+-    protected float eyeHeight;
++    private float eyeHeight;
+     public boolean isInPowderSnow;
+     public boolean wasInPowderSnow;
+     public Optional<BlockPos> mainSupportingBlockPos = Optional.empty();
+@@ -1305,7 +_,7 @@
+         this.applyEffectsFromBlocks(this.finalMovementsThisTick);
+     }
+ 
+-    public void addMovementThisTick(Entity.Movement movement) {
++    private void addMovementThisTick(Entity.Movement movement) {
+         if (this.movementThisTick.size() >= 100) {
+             Entity.Movement movement1 = this.movementThisTick.removeFirst();
+             Entity.Movement movement2 = this.movementThisTick.removeFirst();
+@@ -1523,7 +_,7 @@
+     }
+ 
+     // Paper start - optimise collisions
+-    protected Vec3 collide(Vec3 movement) {
++    private Vec3 collide(Vec3 movement) {
+         final boolean xZero = movement.x == 0.0;
+         final boolean yZero = movement.y == 0.0;
+         final boolean zZero = movement.z == 0.0;
+@@ -5359,7 +_,7 @@
+         void accept(Entity entity, double x, double y, double z);
+     }
+ 
+-    public record Movement(Vec3 from, Vec3 to, Optional<Vec3> axisDependentOriginalMovement) {
++    record Movement(Vec3 from, Vec3 to, Optional<Vec3> axisDependentOriginalMovement) {
+         public Movement(Vec3 from, Vec3 to, Vec3 axisDependentOriginalMovement) {
+             this(from, to, Optional.of(axisDependentOriginalMovement));
+         }

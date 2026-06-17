@@ -1,0 +1,11 @@
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -194,7 +_,7 @@
+     public final ServerChunkCache chunkSource;
+     private final MinecraftServer server;
+     public final net.minecraft.world.level.storage.PrimaryLevelData serverLevelData; // CraftBukkit - type
+-    public final EntityTickList entityTickList = new EntityTickList();
++    final EntityTickList entityTickList = new EntityTickList();
+     private final ServerWaypointManager waypointManager;
+     private final EnvironmentAttributeSystem environmentAttributes;
+     // Paper - rewrite chunk system

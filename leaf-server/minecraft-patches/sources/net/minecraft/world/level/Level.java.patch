@@ -1,0 +1,11 @@
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -113,7 +_,7 @@
+         .add(new ExplosionParticleInfo(ParticleTypes.SMOKE, 1.0F, 1.0F))
+         .build();
+     public final List<TickingBlockEntity> blockEntityTickers = Lists.newArrayList();
+-    public final CollectingNeighborUpdater neighborUpdater;
++    protected final CollectingNeighborUpdater neighborUpdater;
+     private final List<TickingBlockEntity> pendingBlockEntityTickers = Lists.newArrayList();
+     private boolean tickingBlockEntities;
+     public final Thread thread;

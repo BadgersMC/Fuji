@@ -1,0 +1,287 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Tue, 16 Jun 2026 22:26:38 -0400
+Subject: [PATCH] Fuji: revert Hopper + ChunkEntitySlices to Leaf (defer
+ #0025/#0014)
+
+
+diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java
+index 46010f20f507273a449e54a11dd64eb5c9cb017d..09dd84d9866a3bbb7282b3277be99a5c16cb0a74 100644
+--- a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java
++++ b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/ChunkEntitySlices.java
+@@ -319,12 +319,6 @@ public final class ChunkEntitySlices {
+         return true;
+     }
+ 
+-    // Sakura start - optimise paper explosions; expose slice entity list
+-    public Entity[] getSectionEntities(final int sectionY) {
+-        return this.allEntities.getSectionEntities(sectionY);
+-    }
+-    // Sakura end - optimise paper explosions; expose slice entity list
+-
+     public void getHardCollidingEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate) {
+         this.hardCollidingEntities.getEntities(except, box, into, predicate);
+     }
+@@ -336,14 +330,7 @@ public final class ChunkEntitySlices {
+ 
+     public boolean getEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
+                                final int maxCount) {
+-        // Sakura start - add maxSearch to getEntities
+-        return this.getEntities(except, box, into, predicate, maxCount, Integer.MAX_VALUE);
+-    }
+-
+-    public boolean getEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
+-                               final int maxCount, final int maxSearch) {
+-        return this.allEntities.getEntitiesLimited(except, box, into, predicate, maxCount, maxSearch);
+-        // Sakura end - add maxSearch to getEntities
++        return this.allEntities.getEntitiesLimited(except, box, into, predicate, maxCount);
+     }
+ 
+     public <T extends Entity> void getEntities(final EntityType<?> type, final AABB box, final List<? super T> into,
+@@ -546,17 +533,6 @@ public final class ChunkEntitySlices {
+             }
+         }
+ 
+-        // Sakura start - optimise paper explosions; expose slice entity list
+-        public Entity[] getSectionEntities(final int sectionY) {
+-            final BasicEntityList<Entity> entityList = this.entitiesBySection[sectionY - this.slices.minSection];
+-            if (entityList != null) {
+-                return entityList.storage;
+-            } else {
+-                return new Entity[0];
+-            }
+-        }
+-        // Sakura end - optimise paper explosions; expose slice entity list
+-
+         public void getEntities(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate) {
+             if (this.count == 0) {
+                 return;
+@@ -614,13 +590,6 @@ public final class ChunkEntitySlices {
+ 
+         public boolean getEntitiesLimited(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
+                                           final int maxCount) {
+-            // Sakura start - add maxSearch to getEntities
+-            return this.getEntitiesLimited(except, box, into, predicate, maxCount, Integer.MAX_VALUE);
+-        }
+-
+-        public boolean getEntitiesLimited(final Entity except, final AABB box, final List<Entity> into, final Predicate<? super Entity> predicate,
+-                                          final int maxCount, final int maxSearch) {
+-            // Sakura end - add maxSearch to getEntities
+             if (this.count == 0) {
+                 return false;
+             }
+@@ -651,14 +620,11 @@ public final class ChunkEntitySlices {
+                 final Entity[] storage = list.storage;
+                 final int len = Math.min(storage.length, list.size());
+ 
+-                // Sakura start - add maxSearch to getEntities
+-                final int len = Math.min(storage.length, list.size());
+-                final int offset = this.slices.world.random.nextInt(len);
+                 for (int i = 0; i < len; ++i) {
+-                    final int pos = (i + offset) % len;
+-                    final Entity entity = storage[pos];
+-                    if (i > maxSearch) break;
+-                    // Sakura end - add maxSearch to getEntities
++                    final Entity entity = storage[i];
++                    if (entity == null || entity == except) {
++                        continue;
++                    }
+ 
+                     // Inline AABB#intersects to avoid a method call and use the cached AABB fields.
+                     final AABB entityBB = entity.getBoundingBox();
+diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
+index e7faf9d5cb975e0f5eea36c19cea0c27426c03e6..1e8b94ea01d7662247affe1ffbe9bf655dd3d64d 100644
+--- a/net/minecraft/world/level/block/entity/HopperBlockEntity.java
++++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
+@@ -34,7 +34,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+     private static final int[][] CACHED_SLOTS = new int[54][];
+     private static final int NO_COOLDOWN_TIME = -1;
+     private static final Component DEFAULT_NAME = Component.translatable("container.hopper");
+-    private me.samsuik.sakura.container.SlotCountingItemList items = me.samsuik.sakura.container.SlotCountingItemList.withSize(5, ItemStack.EMPTY); // Sakura - optimise hopper ticking
++    private NonNullList<ItemStack> items = NonNullList.withSize(5, ItemStack.EMPTY);
+     public int cooldownTime = -1;
+     private long tickedGameTime;
+     private Direction facing;
+@@ -72,119 +72,6 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+         this.maxStack = size;
+     }
+     // CraftBukkit end
+-    // Sakura start - optimise hopper ticking
+-    private static final int SOURCE_CONTAINER   = 1 << 0;
+-    private static final int ATTACHED_CONTAINER = 1 << 1;
+-    private int knownContainers = 0;
+-    private final @Nullable Container[] containers = new Container[2];
+-
+-    @Override
+-    public final void changed(final Container container) {
+-        this.setBlockEntityTicking(true);
+-    }
+-
+-    @Override
+-    public final void removed(final Container container) {
+-        this.unwatchContainers();
+-        this.setBlockEntityTicking(true);
+-    }
+-
+-    @Override
+-    public void setChanged() {
+-        super.setChanged();
+-        this.setBlockEntityTicking(true);
+-    }
+-
+-    @Override
+-    public void setRemoved() {
+-        this.unwatchContainers();
+-        super.setRemoved();
+-    }
+-
+-    @Override
+-    protected final void catchupTicks(int ticks) {
+-        this.cooldownTime -= ticks;
+-    }
+-
+-    private void unwatchContainers() {
+-        for (final Container container : this.containers) {
+-            if (container != null) {
+-                container.unwatch(this);
+-            }
+-        }
+-
+-        this.knownContainers = 0;
+-    }
+-
+-    private void waitForChange(final int fullState) {
+-        if ((fullState == HOPPER_IS_FULL || (this.knownContainers & SOURCE_CONTAINER) != 0)
+-            && (fullState == HOPPER_EMPTY || (this.knownContainers & ATTACHED_CONTAINER) != 0)) {
+-            this.setBlockEntityTicking(false);
+-        }
+-    }
+-
+-    private static @Nullable Container sakura$getSourceContainer(final Level level, final Hopper hopper, final BlockPos pos, final BlockState state) {
+-        if (!(hopper instanceof HopperBlockEntity hbe) || org.bukkit.event.inventory.HopperInventorySearchEvent.getHandlerList().getRegisteredListeners().length != 0) {
+-            return getSourceContainer(level, hopper, pos, state);
+-        }
+-
+-        Container sourceContainer = hbe.containers[0];
+-        if ((hbe.knownContainers & SOURCE_CONTAINER) != 0 && isValidContainer(sourceContainer)) {
+-            return sourceContainer;
+-        }
+-
+-        if (sourceContainer != null) {
+-            sourceContainer.unwatch(hbe);
+-        }
+-
+-        sourceContainer = getSourceContainer(level, hopper, pos, state);
+-        hbe.listenForContainerChanges(sourceContainer, SOURCE_CONTAINER);
+-        hbe.containers[0] = sourceContainer;
+-
+-        if (sourceContainer != null) {
+-            sourceContainer.watch(hbe);
+-        }
+-
+-        return sourceContainer;
+-    }
+-
+-    private static @Nullable Container sakura$getAttachedContainer(final Level level, final BlockPos pos, final HopperBlockEntity hbe) {
+-        if (org.bukkit.event.inventory.HopperInventorySearchEvent.getHandlerList().getRegisteredListeners().length != 0) {
+-            return getAttachedContainer(level, pos, hbe);
+-        }
+-
+-        Container attachedContainer = hbe.containers[1];
+-        if ((hbe.knownContainers & ATTACHED_CONTAINER) != 0 && isValidContainer(attachedContainer)) {
+-            return attachedContainer;
+-        }
+-
+-        if (attachedContainer != null) {
+-            attachedContainer.unwatch(hbe);
+-        }
+-
+-        attachedContainer = getAttachedContainer(level, pos, hbe);
+-        hbe.listenForContainerChanges(attachedContainer, ATTACHED_CONTAINER);
+-        hbe.containers[1] = attachedContainer;
+-
+-        if (attachedContainer != null) {
+-            attachedContainer.watch(hbe);
+-        }
+-
+-        return attachedContainer;
+-    }
+-
+-    private void listenForContainerChanges(final @Nullable Container container, final int type) {
+-        if (isValidContainer(container)) {
+-            this.knownContainers |= type; // set
+-        } else if ((this.knownContainers & type) != 0) {
+-            this.knownContainers ^= type; // unset
+-        }
+-    }
+-
+-    private static boolean isValidContainer(@Nullable final Container container) {
+-        return container != null && !container.sakura$isRemoved();
+-    }
+-    // Sakura end - optimise hopper ticking
+ 
+     public HopperBlockEntity(BlockPos pos, BlockState blockState) {
+         super(BlockEntityType.HOPPER, pos, blockState);
+@@ -194,7 +81,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+     @Override
+     protected void loadAdditional(ValueInput input) {
+         super.loadAdditional(input);
+-        this.items = me.samsuik.sakura.container.SlotCountingItemList.withSize(this.getContainerSize(), ItemStack.EMPTY); // Sakura - optimise hopper ticking
++        this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
+         if (!this.tryLoadLootTable(input)) {
+             ContainerHelper.loadAllItems(input, this.items);
+         }
+@@ -267,15 +154,32 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+     private static int getFullState(final HopperBlockEntity hopper) {
+         hopper.unpackLootTable(null);
+ 
+-        // Sakura start - optimise hopper ticking
+-        if (hopper.items.isEmpty()) {
+-            return HOPPER_EMPTY;
+-        } else if (hopper.items.isFull()) {
+-            return HOPPER_IS_FULL;
+-        } else {
+-            return HOPPER_HAS_ITEMS;
++        final List<ItemStack> hopperItems = hopper.items;
++
++        boolean empty = true;
++        boolean full = true;
++
++        for (int i = 0, len = hopperItems.size(); i < len; ++i) {
++            final ItemStack stack = hopperItems.get(i);
++            if (stack.isEmpty()) {
++                full = false;
++                continue;
++            }
++
++            if (!full) {
++                // can't be full
++                return HOPPER_HAS_ITEMS;
++            }
++
++            empty = false;
++
++            if (stack.getCount() != stack.getMaxStackSize()) {
++                // can't be full or empty
++                return HOPPER_HAS_ITEMS;
++            }
+         }
+-        // Sakura end - optimise hopper ticking
++
++        return empty ? HOPPER_EMPTY : (full ? HOPPER_IS_FULL : HOPPER_HAS_ITEMS);
+     }
+     // Paper end - Perf: Optimize Hoppers
+ 
+@@ -307,12 +211,6 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+                     // Leaves end - Lithium Sleeping Block Entity
+                     return true;
+                 }
+-
+-                // Sakura start - optimise hopper ticking
+-                if (level.sakuraConfig().technical.optimiseIdleHopperTicking) {
+-                    blockEntity.waitForChange(fullState);
+-                }
+-                // Sakura end - optimise hopper ticking
+             }
+ 
+             return false;

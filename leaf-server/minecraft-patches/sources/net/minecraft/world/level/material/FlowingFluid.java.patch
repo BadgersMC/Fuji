@@ -1,0 +1,11 @@
+--- a/net/minecraft/world/level/material/FlowingFluid.java
++++ b/net/minecraft/world/level/material/FlowingFluid.java
+@@ -509,7 +_,7 @@
+         this.spread(level, pos, state, fluidState);
+     }
+ 
+-    public static int getLegacyLevel(FluidState state) {
++    protected static int getLegacyLevel(FluidState state) {
+         return state.isSource() ? 0 : 8 - Math.min(state.getAmount(), 8) + (state.getValue(FALLING) ? 8 : 0);
+     }
+ 

@@ -1,0 +1,11 @@
+--- a/net/minecraft/network/protocol/game/ClientboundLevelChunkWithLightPacket.java
++++ b/net/minecraft/network/protocol/game/ClientboundLevelChunkWithLightPacket.java
+@@ -16,7 +_,7 @@
+     );
+     private final int x;
+     private final int z;
+-    public final ClientboundLevelChunkPacketData chunkData;
++    private final ClientboundLevelChunkPacketData chunkData;
+     private final ClientboundLightUpdatePacketData lightData;
+     // Paper start - Async-Anti-Xray - Ready flag for the connection, add chunk packet info
+     private volatile boolean ready;
