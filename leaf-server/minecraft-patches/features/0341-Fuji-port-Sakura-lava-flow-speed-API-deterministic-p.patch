@@ -1,0 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 14:50:25 -0400
+Subject: [PATCH] Fuji: port Sakura lava-flow-speed API (deterministic
+ per-region delay)
+
+
+diff --git a/net/minecraft/world/level/material/LavaFluid.java b/net/minecraft/world/level/material/LavaFluid.java
+index 66117eb86a2cf4926a01be6dd1a76570fde48640..a3b28067f6f6ac3ddc81792fed14e1fe083d420c 100644
+--- a/net/minecraft/world/level/material/LavaFluid.java
++++ b/net/minecraft/world/level/material/LavaFluid.java
+@@ -226,7 +226,7 @@ public abstract class LavaFluid extends FlowingFluid {
+ 
+     @Override
+     public int getCompensatedTickDelay(Level level, BlockPos pos) {
+-        return org.dreeam.leaf.misc.LagCompensation.fluidDelay(level, pos, this.getRawTickDelay(level), org.dreeam.leaf.config.modules.misc.LagCompensation.enableForLava, FluidTags.WATER);
++        return org.dreeam.leaf.misc.LagCompensation.fluidDelay(level, pos, this.getTickDelay(level, pos), org.dreeam.leaf.config.modules.misc.LagCompensation.enableForLava, FluidTags.WATER); // Fuji - base = Sakura deterministic per-region lava flow speed (localConfig); lag-comp only if enabled
+     }
+     // Leaf end - TT20 - Lag compensation
+ 
