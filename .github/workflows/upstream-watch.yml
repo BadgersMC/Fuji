@@ -64,13 +64,22 @@ jobs:
             exit 0
           fi
 
-          # Previous seen sha (from the most recent existing issue) -> compare link
+          # Previous seen sha (from the most recent existing issue) -> compare + diff
           prev=$(gh issue list -R "$GITHUB_REPOSITORY" --state all --label "$LABEL" \
                    --limit 1 --json title --jq '.[0].title // ""' \
                    | grep -oE '[0-9a-f]{7}' | head -1 || true)
           compare=""
+          stats=""
+          filelist=""
           if [ -n "$prev" ] && [ "$prev" != "$short" ]; then
             compare="https://github.com/$REPO/compare/$prev...$sha"
+            cmp=$(gh api "repos/$REPO/compare/$prev...$sha" 2>/dev/null || echo '{}')
+            ncommits=$(jq -r '.total_commits // 0' <<<"$cmp")
+            add=$(jq -r '[.files[]?.additions] | add // 0' <<<"$cmp")
+            del=$(jq -r '[.files[]?.deletions] | add // 0' <<<"$cmp")
+            nfiles=$(jq -r '[.files[]?] | length' <<<"$cmp")
+            stats="**$ncommits** commit(s) · **$nfiles** file(s) · **+$add / -$del**"
+            filelist=$(jq -r '.files[]? | "- `\(.status)` `\(.filename)` (+\(.additions)/-\(.deletions))"' <<<"$cmp" | head -30)
           fi
 
           # Build the issue body
@@ -82,7 +91,19 @@ jobs:
             echo "- **Date:** $date"
             echo "- **Branch:** https://github.com/$REPO/tree/$BRANCH"
             echo "- **Recent commits:** https://github.com/$REPO/commits/$BRANCH"
-            [ -n "$compare" ] && echo "- **Changes since last seen:** $compare"
+            if [ -n "$compare" ]; then
+              echo "- **Diff since last seen:** [compare]($compare) · [.diff]($compare.diff) · [.patch]($compare.patch)"
+            fi
+            if [ -n "$stats" ]; then
+              echo ""
+              echo "$stats"
+              echo ""
+              echo "<details><summary>Changed files</summary>"
+              echo ""
+              echo "$filelist"
+              echo ""
+              echo "</details>"
+            fi
             echo ""
             echo "---"
             echo "_Auto-filed by \`upstream-watch\`. Review the diff and decide whether to port it into Fuji, then close this issue._"
