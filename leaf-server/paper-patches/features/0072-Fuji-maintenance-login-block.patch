@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 13:09:05 -0400
+Subject: [PATCH] Fuji: maintenance login block
+
+
+diff --git a/src/main/java/io/papermc/paper/connection/HorriblePlayerLoginEventHack.java b/src/main/java/io/papermc/paper/connection/HorriblePlayerLoginEventHack.java
+index 6f8b41a172386572323ebe474003a9b2ecd50c3d..4eb180d17a2b902e2408c763269d4118414fb41c 100644
+--- a/src/main/java/io/papermc/paper/connection/HorriblePlayerLoginEventHack.java
++++ b/src/main/java/io/papermc/paper/connection/HorriblePlayerLoginEventHack.java
+@@ -46,7 +46,7 @@ public class HorriblePlayerLoginEventHack {
+     }
+ 
+     public static @Nullable Component execute(final Connection connection, MinecraftServer server, GameProfile profile, PlayerList.LoginResult result) {
+-        if (PlayerLoginEvent.getHandlerList().getRegisteredListeners().length == 0) {
++        if (PlayerLoginEvent.getHandlerList().getRegisteredListeners().length == 0 && !me.fuji.maintenance.Maintenance.isEnabled()) { // Fuji - maintenance mode
+             return result.message();
+         }
+ 
+@@ -88,6 +88,12 @@ public class HorriblePlayerLoginEventHack {
+         event.disallow(result.result(), PaperAdventure.asAdventure(result.message()));
+         event.callEvent();
+ 
++        // Fuji start - maintenance mode
++        if (me.fuji.maintenance.Maintenance.isEnabled() && !horribleBukkitPlayer.hasPermission("fuji.maintenance.bypass")) {
++            event.disallow(PlayerLoginEvent.Result.KICK_OTHER, me.fuji.maintenance.Maintenance.kickMessage());
++        }
++        // Fuji end - maintenance mode
++
+         Component finalResult;
+         if (event.getResult() == PlayerLoginEvent.Result.ALLOWED) {
+             finalResult = null;

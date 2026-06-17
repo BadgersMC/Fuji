@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 13:09:04 -0400
+Subject: [PATCH] Fuji: /maintenance command (op-level toggle)
+
+
+diff --git a/net/minecraft/commands/Commands.java b/net/minecraft/commands/Commands.java
+index 1dedea0b4bee8e46726029b7c05d849e9ed27947..d4d17f0e3d2ed3269394d4d874f00e13e303d916 100644
+--- a/net/minecraft/commands/Commands.java
++++ b/net/minecraft/commands/Commands.java
+@@ -193,6 +193,19 @@ public class Commands {
+     }
+     public Commands(Commands.CommandSelection selection, CommandBuildContext context, final boolean modern) {
+     // Paper end - Brigadier API - modern minecraft overloads that do not use redirects but are copies instead
++        // Fuji start - maintenance mode
++        me.fuji.maintenance.Maintenance.load();
++        this.dispatcher.register(
++            literal("maintenance")
++                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
++                .executes(ctx -> {
++                    final boolean now = me.fuji.maintenance.Maintenance.toggle();
++                    ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
++                        "Maintenance mode " + (now ? "enabled" : "disabled") + "."), true);
++                    return com.mojang.brigadier.Command.SINGLE_SUCCESS;
++                })
++        );
++        // Fuji end - maintenance mode
+         AdvancementCommands.register(this.dispatcher);
+         AttributeCommand.register(this.dispatcher, context);
+         ExecuteCommand.register(this.dispatcher, context);
