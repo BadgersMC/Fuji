@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 19:29:43 -0400
+Subject: [PATCH] Fuji: async tracker honors Sakura client visibility settings
+
+
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index 393c30f6430cf7461b38d918bb8a41dcacf082b6..c42a1f7c9e2d8c6399d3b201f057ac3fb5a29d01 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -1082,7 +1082,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+             }
+         }
+ 
+-        this.minimalEntities.clear(); // Sakura - client visibility settings; minimal tnt/sand
++        synchronized (this.minimalEntities) { this.minimalEntities.clear(); } // Sakura - client visibility settings; minimal tnt/sand // Fuji - async tracker thread-safety
+     }
+     // Paper end - optimise entity tracker
+ 
+@@ -1401,11 +1401,13 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+ 
+             if (state == me.samsuik.sakura.player.visibility.VisibilityState.MINIMAL) {
+                 final long key = entity.blockPosition().asLong() ^ entity.getType().hashCode();
+-                final long visibleEntity = ChunkMap.this.minimalEntities.get(key);
+-                if (visibleEntity != Integer.MIN_VALUE) {
+-                    return entity.getId() == visibleEntity;
+-                } else {
+-                    ChunkMap.this.minimalEntities.put(key, entity.getId());
++                synchronized (ChunkMap.this.minimalEntities) { // Fuji - async tracker thread-safety
++                    final long visibleEntity = ChunkMap.this.minimalEntities.get(key);
++                    if (visibleEntity != Integer.MIN_VALUE) {
++                        return entity.getId() == visibleEntity;
++                    } else {
++                        ChunkMap.this.minimalEntities.put(key, entity.getId());
++                    }
+                 }
+             }
+ 
+@@ -1611,6 +1613,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                         && ((rangeYSqr == 0.0) || ((dy * dy) <= rangeYSqr))
+                         && this.entity.broadcastToPlayer(player)
+                         && ChunkMap.this.isChunkTracked(player, eChunkX, eChunkZ)
++                        && this.checkEntityVisibility(player) // Fuji - honor Sakura client visibility settings in the async tracker (leaf$tick reimplements the player loop; was missing this)
+                         && player.getBukkitEntity().canSeeChunkMapUpdatePlayer(this.entity.getBukkitEntity());
+                     if (flag) {
+                         if (this.seenBy.add(player.connection)) {
