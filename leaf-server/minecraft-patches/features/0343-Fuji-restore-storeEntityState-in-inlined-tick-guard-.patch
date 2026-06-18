@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 17 Jun 2026 20:39:56 -0400
+Subject: [PATCH] Fuji: restore storeEntityState in inlined tick guard (fixes
+ cannon merging)
+
+
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index e44edc561a4a578105567d2b599a3c0fe1854a4b..349e4430ced7dd0d348e766f829da0fcd19cfc2c 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -1086,6 +1086,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+                                     profilerFiller.push("tick");
+                                     // Gale start - Airplane - remove lambda from ticking guard - copied from guardEntityTick
+                                     try {
++                                        entity.storeEntityState(); // Fuji - Sakura store entity data/state; Gale inlined guardEntityTick and dropped this, breaking cannon-entity merging (compareState saw a null state)
+                                         this.tickNonPassenger(entity); // Gale - Airplane - remove lambda from ticking guard - changed
+                                     } catch (Throwable var6) {
+                                         // Paper start - Prevent block entity and entity crashes
