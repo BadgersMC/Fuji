@@ -1,0 +1,127 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Thu, 18 Jun 2026 09:01:18 -0400
+Subject: [PATCH] Fuji: port #0026 version-accurate block traversal (cannon
+ fidelity)
+
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 7fc34434bd2a1f6837c6c8d40cbbf3a3197c700a..0196d8fa81371eddf9f3dce17a83178386ff1dae 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -2116,11 +2116,22 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+     // Leaf start - optimize checkInsideBlocks calls
+     private int checkInsideBlocks(Vec3 from, Vec3 to, InsideBlockEffectApplier.StepBasedCollector stepBasedCollector, LongSet visited, int maxSteps, net.minecraft.world.level.chunk.ChunkAccess[] chunkCache) { // Sakura - accept chunkCache (Leaf uses own caching)
+         final Level level = this.level();
+-        AABB aabb = this.getBoundingBox().move(to.subtract(this.position())).deflate(1.0E-5F);
++        // Fuji - #0026: version-accurate margin + mechanicsTarget threading (was Leaf hardcoded-modern)
++        final me.samsuik.sakura.mechanics.MinecraftMechanicsTarget mechanicsTarget = this.mechanicsTarget;
++        final double margin;
++        if (mechanicsTarget.atLeast(me.samsuik.sakura.mechanics.MechanicVersion.v1_21_2)) {
++            margin = 1.0e-5f;
++        } else if (mechanicsTarget.atLeast(me.samsuik.sakura.mechanics.MechanicVersion.v1_19_3)) {
++            margin = 1.0e-7f;
++        } else {
++            margin = 0.001;
++        }
++        AABB aabb = this.getBoundingBox().move(to.subtract(this.position())).deflate(margin);
+         final net.minecraft.world.level.chunk.ChunkAccess[] cachedChunk = {null};
+         final long[] cachedChunkPos = { Long.MIN_VALUE };
+ 
+-        boolean flag = from.distanceToSqr(to) > Mth.square(0.9999900000002526);
++        boolean flag = mechanicsTarget.before(me.samsuik.sakura.mechanics.MechanicVersion.v1_21_10)
++            || from.distanceToSqr(to) > Mth.square(0.9999900000002526);
+         boolean flag1 = this.level instanceof ServerLevel serverLevel
+             && serverLevel.getServer().debugSubscribers().hasAnySubscriberFor(DebugSubscriptions.ENTITY_BLOCK_INTERSECTIONS);
+         AtomicInteger atomicInteger = new AtomicInteger();
+@@ -2128,6 +2139,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+             from,
+             to,
+             aabb,
++            mechanicsTarget, // Fuji - #0026
+             (pos, index) -> {
+                 if (!this.isAlive()) {
+                     return false;
+diff --git a/net/minecraft/world/level/BlockGetter.java b/net/minecraft/world/level/BlockGetter.java
+index f59b2201b1ac260d9076bf73ca1a337dd782afb4..913d5ae5927da838dc600a1a58a50ee68c63c94a 100644
+--- a/net/minecraft/world/level/BlockGetter.java
++++ b/net/minecraft/world/level/BlockGetter.java
+@@ -210,9 +210,23 @@ public interface BlockGetter extends LevelHeightAccessor {
+     }
+ 
+     static boolean forEachBlockIntersectedBetween(Vec3 from, Vec3 to, AABB boundingBox, BlockGetter.BlockStepVisitor visitor) {
++        // Fuji - #0026: restore Sakura version-accurate traversal (was Leaf hardcoded-modern, ignored mechanicsTarget)
++        return forEachBlockIntersectedBetween(from, to, boundingBox, me.samsuik.sakura.mechanics.MinecraftMechanicsTarget.latest(), visitor);
++    }
++
++    static boolean forEachBlockIntersectedBetween(
++        final Vec3 from,
++        final Vec3 to,
++        final AABB boundingBox,
++        final me.samsuik.sakura.mechanics.MinecraftMechanicsTarget mechanicsTarget,
++        final BlockGetter.BlockStepVisitor visitor
++    ) {
+         Vec3 vec3 = to.subtract(from);
+-        if (vec3.lengthSqr() < Mth.square(1.0E-5F)) {
+-            for (BlockPos blockPos : org.dreeam.leaf.util.list.SimpleBlockPosIterator.iterable(boundingBox)) { // Leaf - Sakura - optimise check inside blocks
++        final double movedThreshold = mechanicsTarget.atLeast(me.samsuik.sakura.mechanics.MechanicVersion.v1_21_9)
++            ? 1.0E-5F
++            : 0.99999F;
++        if (vec3.lengthSqr() < Mth.square(movedThreshold) || mechanicsTarget.before(me.samsuik.sakura.mechanics.MechanicVersion.v1_21_2)) {
++            for (final BlockPos blockPos : me.samsuik.sakura.utils.SimpleBlockPosIterator.iterable(boundingBox)) { // Sakura - optimise check inside blocks
+                 if (!visitor.visit(blockPos, 0)) {
+                     return false;
+                 }
+@@ -220,35 +234,41 @@ public interface BlockGetter extends LevelHeightAccessor {
+ 
+             return true;
+         } else {
+-            // Leaf start - Sakura - optimise check inside blocks
++            // Sakura start - optimise check inside blocks
+             final boolean xZero = vec3.x() == 0.0;
+             final boolean yZero = vec3.y() == 0.0;
+             final boolean zZero = vec3.z() == 0.0;
+             if (xZero && yZero || yZero && zZero || xZero && zZero) {
+-                int blockIndex = 0;
+-                for (final BlockPos blockPos : org.dreeam.leaf.util.list.SimpleBlockPosIterator.traverseBoundsInDirection(vec3, boundingBox, 16.0)) {
+-                    if (!visitor.visit(blockPos, blockIndex++)) {
++                for (final BlockPos blockPos : me.samsuik.sakura.utils.SimpleBlockPosIterator.traverseBoundsInDirection(vec3, boundingBox, 16.0)) {
++                    if (!visitor.visit(blockPos, 0)) {
+                         return false;
+                     }
+                 }
+                 return true;
+             }
+-            // Leaf end - Sakura - optimise check inside blocks
++            // Sakura end - optimise check inside blocks
+             LongSet set = new LongOpenHashSet();
+ 
+-            for (BlockPos blockPos1 : BlockPos.betweenCornersInDirection(boundingBox.move(vec3.scale(-1.0)), vec3)) {
+-                if (!visitor.visit(blockPos1, 0)) {
+-                    return false;
+-                }
++            // Sakura start - configure server mechanics
++            if (mechanicsTarget.atLeast(me.samsuik.sakura.mechanics.MechanicVersion.v1_21_9)) {
++                for (BlockPos blockPos1 : me.samsuik.sakura.utils.SimpleBlockPosIterator.iterable(boundingBox.move(vec3.scale(-1.0)))) { // Sakura - optimise check inside blocks
++                    if (!visitor.visit(blockPos1, 0)) {
++                        return false;
++                    }
+ 
+-                set.add(blockPos1.asLong());
++                    set.add(blockPos1.asLong());
++                }
+             }
+ 
+             int i = addCollisionsAlongTravel(set, vec3, boundingBox, visitor);
++            if (mechanicsTarget.before(me.samsuik.sakura.mechanics.MechanicVersion.v1_21_5)) {
++                i = 0;
++            }
++            // Sakura end - configure server mechanics
+             if (i < 0) {
+                 return false;
+             } else {
+-                for (BlockPos blockPos2 : org.dreeam.leaf.util.list.SimpleBlockPosIterator.iterable(boundingBox)) { // Leaf - Sakura - optimise check inside blocks
++                for (final BlockPos blockPos2 : me.samsuik.sakura.utils.SimpleBlockPosIterator.iterable(boundingBox)) { // Sakura - optimise check inside blocks
+                     if (set.add(blockPos2.asLong()) && !visitor.visit(blockPos2, i + 1)) {
+                         return false;
+                     }
