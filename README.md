@@ -18,15 +18,13 @@
 
 **Fuji** is a Minecraft server fork that fuses **[Leaf](https://github.com/Winds-Studio/Leaf)'s** optimization stack with **[Sakura](https://github.com/Samsuik/Sakura)'s** cannon mechanics — purpose-built for faction networks that run many worlds and demand frame-perfect cannons.
 
-It is, as far as we know, the first fork to merge Sakura's cannoning engine into Leaf — a notoriously difficult patch-on-patch integration. The result is a single server jar that cannons like Sakura and scales like Leaf.
-
 ## Why Fuji
 
 Most forks make you choose. Fuji refuses to.
 
 - 🎯 **World-class cannoning.** Sakura's deterministic explosions, cannon-entity merging, and version-accurate physics — the most advanced open cannon engine there is — merged in whole.
-- 🌏 **Per-world parallel ticking.** Each world ticks on its own thread with its own TPS budget. A massive cannon war on one world *cannot* lag the others.
-- ⚡ **Leaf-class performance.** The full Leaf stack underneath — Moonrise chunk system, Lithium, async, and the optimizations pulled from Gale, Purpur, Pufferfish, and more.
+- 🌏 **Per-world parallel ticking.** Each world ticks on its own thread with its own TPS budget. A massive raid on one world *cannot* lag the others.
+- ⚡ **Leaf-class performance.** The full Leaf stack underneath — Moonrise chunk system, Lithium, async, and the optimizations pulled from Gale, Purpur, Pufferfish, and Kore's TequilaSpigot.
 
 The combination is the point: **deterministic single-world cannons _and_ multi-world parallelism** — without the cross-region desync that makes region-threaded forks hostile to cannoning.
 
@@ -47,7 +45,7 @@ Fuji is **Leaf `ver/1.21.11`** with **every Sakura `1.21.11` patch** folded in a
 - Cannon-entity merging and optimised cannon-entity movement
 - Configurable cannon physics, durable blocks, and specialised explosions
 - Version-accurate mechanics targeting (`MinecraftMechanicsTarget`) for cross-version cannon parity
-- Client visibility settings (`/tnttoggle`, `/sandtoggle`), `/tps`, `/fps`
+- Client visibility settings (`/tnttoggle`, `/sandtoggle`), `/fps`
 - **Per-world cannon configuration** — every world gets its own `sakura-world.yml`
 
 ### ⚡ Performance — from Leaf
@@ -59,6 +57,10 @@ Fuji is **Leaf `ver/1.21.11`** with **every Sakura `1.21.11` patch** folded in a
 - **Per-world TPS isolation** — lag is contained to the world that causes it
 - Coexisting config systems: `paper-`, `gale-`, `leaf-`, and `sakura-` configs side by side
 - Designed for networks of many independent cannoning worlds
+
+### 🗻 Fuji's own
+- **Instant falling-block stacking** — sand drops straight onto a matching pile as blocks instead of spawning gravity entities *(opt-in)*
+- **Roof-cannon height nerf** — only clear above-limit entities that are still moving horizontally, so cannons firing over walls and back down survive *(opt-in)*
 
 ## The architecture it's built for
 
@@ -72,9 +74,9 @@ That's ~10 worlds, each on its own thread, each with its own TPS. By splitting g
 
 ## Status
 
-> ⚠️ **Early access.** Fuji **compiles, builds, and boots** cleanly — Sakura's config system initializes with per-world configs and zero startup errors. What is *not* yet verified is **runtime cannon fidelity**: firing real cannons and confirming they behave identically to upstream Sakura, especially under parallel ticking. Treat this as an experimental fork in active testing, not a drop-in production server.
+> ⚠️ **Early access.** Fuji compiles, builds, and boots cleanly — and **fires real cannons**. Live testing has confirmed a 384-entity sand stacker, a sustained **160-wall stress test**, and cannon entities keeping their own chunks loaded across the shot — all matching upstream Sakura behavior. It's still early access: the wider range of cannon designs and heavy-load behavior under parallel ticking are in active testing, so treat it as a capable-but-maturing fork rather than a hands-off production drop-in.
 
-A short list of Sakura features is currently **deferred** where they collided with a stronger Leaf equivalent (hopper #0025, inside-block iteration #0026, the entity-collision limit #0014, lava-tick timing). See [`DEFERRED.md`](DEFERRED.md).
+A few Sakura patches remain **deferred** — kept on Leaf's stronger equivalent (e.g. hopper ticking #0025) or held pending further cannon testing (the entity-collision limit #0014). Others, including lava-tick timing and version-accurate inside-block traversal #0026, have since been ported. See [`DEFERRED.md`](DEFERRED.md).
 
 ## Building from source
 
