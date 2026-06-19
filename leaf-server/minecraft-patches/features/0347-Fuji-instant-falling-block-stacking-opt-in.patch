@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Thu, 18 Jun 2026 22:26:41 -0400
+Subject: [PATCH] Fuji: instant falling-block stacking (opt-in)
+
+
+diff --git a/net/minecraft/world/entity/item/FallingBlockEntity.java b/net/minecraft/world/entity/item/FallingBlockEntity.java
+index d4b73c5ebc00eb437aedec78c9abd72a6a124a35..f78244f97a29ed77b17e41977d140f678d02b687 100644
+--- a/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -203,6 +203,10 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+             pos.getZ() + 0.5,
+             state.hasProperty(BlockStateProperties.WATERLOGGED) ? state.setValue(BlockStateProperties.WATERLOGGED, false) : state
+         );
++        // Fuji - instant falling-block stacking: drop straight onto an existing pile instead of spawning a gravity entity
++        if (org.dreeam.leaf.config.modules.gameplay.InstantFallingBlocks.enabled && fuji$attemptInstaStack(level, pos, state)) {
++            return fallingBlockEntity;
++        }
+         if (!org.bukkit.craftbukkit.event.CraftEventFactory.callEntityChangeBlockEvent(fallingBlockEntity, pos, state.getFluidState().createLegacyBlock())) return fallingBlockEntity; // CraftBukkit
+ 
+         // Sakura start - limit instant block falling
+@@ -220,6 +224,46 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+         return fallingBlockEntity;
+     }
+ 
++    // Fuji start - instant falling-block stacking
++    // If the spawning block sits directly above a pile of the same falling-block kind (within 20 blocks),
++    // place it instantly on top of the pile and convert any falling-block entities already standing in the
++    // column into blocks, rather than dropping a gravity entity. Opt-in via the instant-falling-blocks config.
++    private static boolean fuji$attemptInstaStack(Level level, BlockPos pos, BlockState spawningState) {
++        if (!(spawningState.getBlock() instanceof net.minecraft.world.level.block.FallingBlock)) {
++            return false;
++        }
++        final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(pos.getX(), pos.getY() - 1, pos.getZ());
++        final net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunk(pos.getX() >> 4, pos.getZ() >> 4);
++        boolean foundPile = false;
++        int checks = 0;
++        do {
++            final BlockState below = chunk.getBlockState(cursor);
++            if (!net.minecraft.world.level.block.FallingBlock.isFree(below)) {
++                foundPile = below.getBlock() instanceof net.minecraft.world.level.block.FallingBlock;
++                break;
++            }
++        } while (checks++ <= 20 && cursor.move(0, -1, 0).getY() >= level.getMinY());
++        if (!foundPile) {
++            return false;
++        }
++        // place the new block on top of the pile and clear the origin
++        cursor.move(0, 1, 0);
++        level.setBlock(cursor, spawningState, Block.UPDATE_ALL, 2);
++        level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL, 2);
++        // collapse any falling-block entities already standing in the column into blocks
++        final net.minecraft.world.phys.AABB column = new net.minecraft.world.phys.AABB(
++            cursor.getX(), cursor.getY(), cursor.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
++        for (Entity entity : level.getEntities((Entity) null, column, e -> e instanceof FallingBlockEntity)) {
++            if (cursor.getY() >= pos.getY()) {
++                break;
++            }
++            level.setBlock(cursor.move(0, 1, 0), spawningState, Block.UPDATE_ALL, 2);
++            entity.discard();
++        }
++        return true;
++    }
++    // Fuji end - instant falling-block stacking
++
+     @Override
+     public boolean isAttackable() {
+         return false;
