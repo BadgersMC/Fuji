@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Thu, 18 Jun 2026 22:12:15 -0400
+Subject: [PATCH] Fuji: roof-cannon height nerf (require horizontal movement,
+ opt-in)
+
+
+diff --git a/net/minecraft/world/entity/item/FallingBlockEntity.java b/net/minecraft/world/entity/item/FallingBlockEntity.java
+index a238a5c866d90c3c0da12a45edb1f07edac9364e..d4b73c5ebc00eb437aedec78c9abd72a6a124a35 100644
+--- a/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -279,8 +279,10 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+             this.limitLeftShooting(); // Sakura - configurable left shooting and adjusting limits
+             this.move(MoverType.SELF, this.getDeltaMovement());
+             this.applyEffectsFromBlocks();
+-            // Paper start - Configurable falling blocks height nerf
+-            if (this.level().paperConfig().fixes.fallingBlockHeightNerf.test(v -> this.getY() > v)) {
++            // Paper start - Configurable falling blocks height nerf // Fuji - roof-cannon nerf: optionally require horizontal movement
++            if (this.level().paperConfig().fixes.fallingBlockHeightNerf.test(v -> this.getY() > v
++                && (!org.dreeam.leaf.config.modules.gameplay.CannonHeightNerf.fallingBlockOnlyWithHorizontalMovement
++                    || this.getDeltaMovement().x != 0.0 || this.getDeltaMovement().z != 0.0))) {
+                 if (this.dropItem && this.level() instanceof final ServerLevel serverLevel && serverLevel.getGameRules().get(GameRules.ENTITY_DROPS)) {
+                     this.spawnAtLocation(serverLevel, block);
+                 }
+diff --git a/net/minecraft/world/entity/item/PrimedTnt.java b/net/minecraft/world/entity/item/PrimedTnt.java
+index 527d2222808f707d356ac0511c1ef3859e7de307..28e10c61d6e73d258a5d5d8a2d46303b02e2b427 100644
+--- a/net/minecraft/world/entity/item/PrimedTnt.java
++++ b/net/minecraft/world/entity/item/PrimedTnt.java
+@@ -181,8 +181,10 @@ public class PrimedTnt extends Entity implements TraceableEntity, me.samsuik.sak
+         this.applyGravity();
+         this.move(MoverType.SELF, this.getDeltaMovement());
+         this.applyEffectsFromBlocks();
+-        // Paper start - Configurable TNT height nerf
+-        if (this.level().paperConfig().fixes.tntEntityHeightNerf.test(v -> this.getY() > v)) {
++        // Paper start - Configurable TNT height nerf // Fuji - roof-cannon nerf: optionally require horizontal movement
++        if (this.level().paperConfig().fixes.tntEntityHeightNerf.test(v -> this.getY() > v
++            && (!org.dreeam.leaf.config.modules.gameplay.CannonHeightNerf.tntOnlyWithHorizontalMovement
++                || this.getDeltaMovement().x != 0.0 || this.getDeltaMovement().z != 0.0))) {
+             this.discard(EntityRemoveEvent.Cause.OUT_OF_WORLD);
+             return;
+         }
