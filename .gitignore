@@ -34,3 +34,4 @@ paper-server
 docs/fuji/
 test-run/
 !.idea/icon.png
+.codebuddy/

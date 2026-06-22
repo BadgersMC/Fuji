@@ -7,11 +7,13 @@
 <p align="center"><em>the peak of cannoning</em></p>
 
 <p align="center">
+  <a href="https://github.com/BadgersMC/Fuji/actions/workflows/build.yml"><img src="https://github.com/BadgersMC/Fuji/actions/workflows/build.yml/badge.svg?branch=fuji" alt="Build status"></a>
+  <a href="https://github.com/BadgersMC/Fuji/releases/latest"><img src="https://img.shields.io/github/v/release/BadgersMC/Fuji?label=latest&color=7C6BC4" alt="Latest release"></a>
+  <img src="https://img.shields.io/github/downloads/BadgersMC/Fuji/total?color=E0968E" alt="Downloads">
   <img src="https://img.shields.io/badge/Minecraft-1.21.11-3E4C7E" alt="Minecraft 1.21.11">
   <img src="https://img.shields.io/badge/Java-21-7C6BC4" alt="Java 21">
-  <img src="https://img.shields.io/badge/based%20on-Leaf%20%C3%97%20Sakura-E0968E" alt="Leaf × Sakura">
   <img src="https://img.shields.io/badge/status-early%20access-F4BC88" alt="Early access">
-  <img src="https://img.shields.io/badge/license-GPL--3.0-2B2540" alt="GPL-3.0">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-2B2540" alt="GPL-3.0"></a>
 </p>
 
 ---
@@ -114,7 +116,7 @@ If you run a server on Fuji, please credit Leaf and Sakura — they did the hard
 
 ## License
 
-Fuji is licensed under **GPL-3.0**, inherited from Paper, Leaf, and Sakura. See [`LICENSE.md`](LICENSE.md). All upstream patches remain under their original licenses and attributions.
+Fuji is licensed under **GPL-3.0**, inherited from Paper, Leaf, and Sakura. See [`LICENSE`](LICENSE) for the full text and [`NOTICE.md`](NOTICE.md) for attribution. All upstream patches remain under their original licenses and attributions.
 
 ---
 

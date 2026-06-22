@@ -1,12 +1,12 @@
 name: EN | Feature request
-description: Suggest an idea to improve Leaf
+description: Suggest an idea to improve Fuji
 type: "Feature"
 
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for taking the time to fill out this feature request for Leaf! Please fill out the following form to help us make sure your feature request will actually improve Leaf!
+        Thank you for taking the time to fill out this feature request for Fuji! Please fill out the following form to help us make sure your feature request will actually improve Fuji!
   - type: textarea
     attributes:
       label: What feature do you want to see added?
