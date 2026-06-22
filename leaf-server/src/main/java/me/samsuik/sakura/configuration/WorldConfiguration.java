@@ -169,6 +169,8 @@ public final class WorldConfiguration extends ConfigurationPart {
             public boolean oldEnchantedGoldenApple = false;
             public boolean oldSoundsAndParticleEffects = false;
             public boolean fastHealthRegen = true;
+            @Comment("Fuji - suppress the directional hurt camera tilt (the ClientboundHurtAnimationPacket)\nfor a flat 1.8-style red flash with no screen shake")
+            public boolean disableHurtCameraShake = false;
 
             @Comment(
                 "The maximum damage a player can take in a single hit.\n" +
@@ -203,6 +205,23 @@ public final class WorldConfiguration extends ConfigurationPart {
             public double knockbackResistanceModifier = 1.0;
             @Comment("Received by attacking a shielded enemy")
             public double shieldHitKnockback = 0.5;
+
+            @Comment("Fuji - 1.8-style friction/air knockback model. When enabled, melee knockback uses a\nfriction-divided + directional velocity with separate ground/air and sprint modifiers.")
+            public Legacy legacy = new Legacy();
+            public class Legacy extends ConfigurationPart {
+                public boolean enabled = false;
+                public double frictionHorizontal = 2.0;
+                public double frictionVertical = 2.0;
+                public double horizontalModifier = 0.4;
+                public double verticalModifier = 0.36;
+                public double horizontalAirModifier = 1.0;
+                public double verticalAirModifier = 1.0;
+                public double sprintingHorizontalModifier = 1.0;
+                public double sprintingVerticalModifier = 1.0;
+                public double verticalMax = 0.4;
+                @Comment("Use 1.8-style probabilistic knockback resistance (a chance to fully resist) instead of a linear factor")
+                public boolean probabilisticResistance = false;
+            }
         }
 
         @Comment("Prevents players swimming, gliding or using riptide to enter small holes")

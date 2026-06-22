@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Sun, 21 Jun 2026 20:51:21 -0400
+Subject: [PATCH] Fuji: per-world toggle to disable hurt camera shake (1.8
+ feel)
+
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index e86fbf2018362f1476d84a47daf3a0fce001a4b1..912c61155f995976e1b3613c6072f04f9319e766 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -3007,6 +3007,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+ 
+     @Override
+     public void indicateDamage(double xDistance, double zDistance) {
++        if (this.level().sakuraConfig().players.combat.disableHurtCameraShake) return; // Fuji - 1.8-style: no directional hurt camera tilt
+         this.hurtDir = (float)(Mth.atan2(zDistance, xDistance) * 180.0F / (float)Math.PI - this.getYRot());
+         this.connection.send(new ClientboundHurtAnimationPacket(this));
+     }
