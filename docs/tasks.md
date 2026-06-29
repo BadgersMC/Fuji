@@ -4,13 +4,18 @@
 
 ---
 
-### TDD-001 — Replace block-change async firehose with dirty flag
+### TDD-001 — Replace block-change async firehose with dirty flag [x]
 **Tag:** TDD
 **References:** REQ-001, `CullTask.java:onBlockChange`, `Level.java` patch
 
 Replace `CompletableFuture.runAsync()` in `CullTask.onBlockChange()` with an `AtomicBoolean dirty` flag set per-nearby-player. The existing `ScheduledExecutorService` tick checks `dirty.compareAndSet(true, false)` to trigger cache reset.
 
 **Evidence:**
+- `leaf-server/src/main/java/dev/tr7zw/entityculling/CullTask.java:152-179` — `onBlockChange()` spawns unbounded `CompletableFuture.runAsync()`
+- `leaf-server/src/main/java/dev/tr7zw/entityculling/CullTask.java:35-37` — instance fields for existing timer tick
+- `leaf-server/minecraft-patches/features/0350-Raytrace-Entity-Tracker.patch:150-181` — `Level.setBlock` hook
+- `java/util/concurrent/atomic/AtomicBoolean` — JDK 21 stdlib (CAS operations)
+- **Completed:** `onBlockChange()` replaced `CompletableFuture.runAsync()` with `AtomicBoolean.dirty.set(true)`. Periodic tick in `run()` checks `dirty.compareAndSet(true, false)` to coalesce bursts. Zero async tasks, O(players) lock-free. Design verified by `DirtyFlagProof.java`.
 
 ---
 

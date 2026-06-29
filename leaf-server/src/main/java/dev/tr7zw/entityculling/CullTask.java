@@ -20,6 +20,7 @@ import org.dreeam.leaf.config.modules.misc.RaytraceTracker;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CullTask implements Runnable {
 
@@ -35,6 +36,7 @@ public class CullTask implements Runnable {
     private final Vec3d lastPos = new Vec3d(0, 0, 0);
     private final Vec3d aabbMin = new Vec3d(0, 0, 0);
     private final Vec3d aabbMax = new Vec3d(0, 0, 0);
+    private final AtomicBoolean dirty = new AtomicBoolean(false);
 
     private static final Executor backgroundWorker = Executors.newCachedThreadPool(
         new ThreadFactoryBuilder()
@@ -86,8 +88,13 @@ public class CullTask implements Runnable {
                     culledEntities.remove(entityId);
                 }
                 Vec3 cameraMC = this.checkTarget.getEyePosition(0);
-                if (!(cameraMC.x == lastPos.x && cameraMC.y == lastPos.y && cameraMC.z == lastPos.z)) {
+                boolean cameraMoved = !(cameraMC.x == lastPos.x && cameraMC.y == lastPos.y && cameraMC.z == lastPos.z);
+                if (cameraMoved) {
                     lastPos.set(cameraMC.x, cameraMC.y, cameraMC.z);
+                }
+                // REQ-001: Dirty flag coalesces N block changes into 1 cache reset per tick.
+                // Camera movement also triggers reset (existing behavior).
+                if (cameraMoved || dirty.compareAndSet(true, false)) {
                     synchronized (culling) {
                         culling.resetCache();
                     }
@@ -150,32 +157,32 @@ public class CullTask implements Runnable {
     }
 
     public static void onBlockChange(Level level, BlockPos pos) {
-        if (RaytraceTracker.enabled) {
-            MinecraftServer server = level.getServer();
-            if (server == null) { // tbh this cant be null
-                return;
-            }
-            PlayerList playerList = server.getPlayerList();
-            CompletableFuture.runAsync(() -> {
-                for (Player player : playerList.realPlayers) {
-                    CullTask cullTask = player.cullTask;
-                    if (cullTask == null) continue;
-                    if (player.level() == level) {
-                        int posX = pos.getX();
-                        int posY = pos.getY();
-                        int posZ = pos.getZ();
-                        BlockPos playerPos = player.blockPosition();
-                        final int playerX = playerPos.getX(), playerY = playerPos.getY(), playerZ = playerPos.getZ();
-                        if (Math.abs(posX - playerX) < RaytraceTracker.maxTraceDistance
-                            && Math.abs(posY - playerY) < RaytraceTracker.maxTraceDistance
-                            && Math.abs(posZ - playerZ) < RaytraceTracker.maxTraceDistance) {
-                            synchronized (cullTask.culling) {
-                                cullTask.culling.resetCache();
-                            }
-                        }
-                    }
+        if (!RaytraceTracker.enabled) {
+            return;
+        }
+        MinecraftServer server = level.getServer();
+        if (server == null) {
+            return;
+        }
+        PlayerList playerList = server.getPlayerList();
+        // REQ-001: Use lock-free dirty flag instead of spawning unbounded async tasks.
+        // Each player's CullTask checks the flag in its periodic tick and resets
+        // the cache at most once per trace interval, regardless of block change burst size.
+        for (Player player : playerList.realPlayers) {
+            CullTask cullTask = player.cullTask;
+            if (cullTask == null) continue;
+            if (player.level() == level) {
+                int posX = pos.getX();
+                int posY = pos.getY();
+                int posZ = pos.getZ();
+                BlockPos playerPos = player.blockPosition();
+                final int playerX = playerPos.getX(), playerY = playerPos.getY(), playerZ = playerPos.getZ();
+                if (Math.abs(posX - playerX) < RaytraceTracker.maxTraceDistance
+                    && Math.abs(posY - playerY) < RaytraceTracker.maxTraceDistance
+                    && Math.abs(posZ - playerZ) < RaytraceTracker.maxTraceDistance) {
+                    cullTask.dirty.set(true);
                 }
-            }, backgroundWorker);
+            }
         }
     }
 
