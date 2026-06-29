@@ -19,13 +19,20 @@ Replace `CompletableFuture.runAsync()` in `CullTask.onBlockChange()` with an `At
 
 ---
 
-### TDD-002 — AtomicReference for CullTask thread safety
+### TDD-002 — AtomicReference for CullTask thread safety [x]
 **Tag:** TDD
 **References:** REQ-002, `Player.java` patch line 112, `CullTask.java`, patch 0293
 
 Replace plain `cullTask` field in `Player.java` patch with `AtomicReference<CullTask>`. Verify that `Entity.isCulled(player)` reads through `AtomicReference.get()` and handles null correctly.
 
 **Evidence:**
+- `leaf-server/minecraft-patches/features/0350-Raytrace-Entity-Tracker.patch:112` — `public CullTask cullTask = null;` plain field
+- `leaf-server/minecraft-patches/features/0350-Raytrace-Entity-Tracker.patch:125-132` — CullTask lifecycle (creation, setup, removal)
+- `leaf-server/src/main/java/dev/tr7zw/entityculling/versionless/access/Cullable.java` — `isCulled(Player)` reads `player.cullTask`
+- `leaf-server/minecraft-patches/features/0350-Raytrace-Entity-Tracker.patch:74,84` — `Entity.java` `isCulled()` and `setCulled()` methods
+- `leaf-server/minecraft-patches/features/0293` — multithreaded tracker (ChunkMap tracking runs on separate thread)
+- `java/util/concurrent/atomic/AtomicReference` — JDK 21 stdlib
+- **Completed:** `Player.cullTask` changed from plain field to `AtomicReference<CullTask>` in patch 0350. All accesses updated to `.get()` / `.set()`: Entity.setCulled, Entity.isCulled, Player tick lifecycle, Player.remove, CullTask.onBlockChange. Visibility guaranteed for MT tracker (patch 0293).
 
 ---
 

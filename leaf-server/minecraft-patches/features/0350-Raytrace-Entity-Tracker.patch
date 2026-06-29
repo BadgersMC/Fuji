@@ -71,7 +71,7 @@ index e7b375720c1bb78a9c3edf6d49c973eba1fcf115..0df23c381891fc9b8362b01196bfcc56
 +
 +    @Override
 +    public void setCulled(boolean value, Player player) {
-+        dev.tr7zw.entityculling.CullTask task = player.cullTask;
++        dev.tr7zw.entityculling.CullTask task = player.cullTask.get();
 +        if (task == null) return;
 +        task.setCulled(this, value);
 +        if (!value) {
@@ -82,7 +82,7 @@ index e7b375720c1bb78a9c3edf6d49c973eba1fcf115..0df23c381891fc9b8362b01196bfcc56
 +    @Override
 +    public boolean isCulled(Player player) {
 +        if (!org.dreeam.leaf.config.modules.misc.RaytraceTracker.enabled) return false;
-+        dev.tr7zw.entityculling.CullTask task = player.cullTask;
++        dev.tr7zw.entityculling.CullTask task = player.cullTask.get();
 +        if (task == null) return false;
 +        return task.isEntityCulled(this);
 +    }
@@ -109,7 +109,7 @@ index 108ef0759e4060fc02d517175731f413c7e2532f..3dbe2fca96439f7202ffe9bd73b43d3f
      public boolean canPortalInstant = false; // Purpur - Add portal permission bypass
      public int sixRowEnderchestSlotCount = -1; // Purpur - Barrels and enderchests 6 rows
 +    // Leaf start - Raytrace Entity Tracker
-+    @Nullable public dev.tr7zw.entityculling.CullTask cullTask;
++    @Nullable public java.util.concurrent.atomic.AtomicReference<dev.tr7zw.entityculling.CullTask> cullTask = new java.util.concurrent.atomic.AtomicReference<>(null);
 +    @Nullable private Level lastCullWorld;
 +    private final boolean needToCull = !(this instanceof org.leavesmc.leaves.replay.ServerPhotographer);
 +    // Leaf end - Raytrace Entity Tracker
@@ -123,29 +123,32 @@ index 108ef0759e4060fc02d517175731f413c7e2532f..3dbe2fca96439f7202ffe9bd73b43d3f
 +        // Leaf start - Raytrace Entity Tracker
 +        if (this.needToCull) {
 +            if (!org.dreeam.leaf.config.modules.misc.RaytraceTracker.enabled) {
-+                if (this.cullTask != null) {
-+                    this.cullTask.signalStop();
-+                    this.cullTask = null;
++                dev.tr7zw.entityculling.CullTask existing = this.cullTask.get();
++                if (existing != null) {
++                    existing.signalStop();
++                    this.cullTask.set(null);
 +                }
 +            } else {
 +                Level currLevel = this.level();
-+                boolean needsUpdate = this.cullTask == null || this.lastCullWorld != currLevel;
++                dev.tr7zw.entityculling.CullTask current = this.cullTask.get();
++                boolean needsUpdate = current == null || this.lastCullWorld != currLevel;
 +
 +                if (needsUpdate) {
-+                    if (this.cullTask != null) {
-+                        this.cullTask.signalStop();
++                    if (current != null) {
++                        current.signalStop();
 +                    }
 +                    final com.logisticscraft.occlusionculling.OcclusionCullingInstance culling = new com.logisticscraft.occlusionculling.OcclusionCullingInstance(
 +                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.maxTraceDistance,
 +                        new dev.tr7zw.entityculling.DefaultChunkDataProvider(currLevel)
 +                    );
-+                    this.cullTask = new dev.tr7zw.entityculling.CullTask(
++                    dev.tr7zw.entityculling.CullTask newTask = new dev.tr7zw.entityculling.CullTask(
 +                        culling,
 +                        this,
 +                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.boundingBoxLimit,
 +                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.traceInterval
 +                    );
-+                    this.cullTask.setup();
++                    newTask.setup();
++                    this.cullTask.set(newTask);
 +                    this.lastCullWorld = currLevel;
 +                }
 +            }
@@ -159,9 +162,10 @@ index 108ef0759e4060fc02d517175731f413c7e2532f..3dbe2fca96439f7202ffe9bd73b43d3f
              this.doCloseContainer();
          }
 +        // Leaf start - Raytrace Entity Tracker
-+        if (this.cullTask != null) {
-+            this.cullTask.signalStop();
-+            this.cullTask = null;
++        dev.tr7zw.entityculling.CullTask existing = this.cullTask.get();
++        if (existing != null) {
++            existing.signalStop();
++            this.cullTask.set(null);
 +        }
 +        // Leaf end - Raytrace Entity Tracker
      }

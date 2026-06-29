@@ -169,7 +169,7 @@ public class CullTask implements Runnable {
         // Each player's CullTask checks the flag in its periodic tick and resets
         // the cache at most once per trace interval, regardless of block change burst size.
         for (Player player : playerList.realPlayers) {
-            CullTask cullTask = player.cullTask;
+            CullTask cullTask = player.cullTask.get();
             if (cullTask == null) continue;
             if (player.level() == level) {
                 int posX = pos.getX();
