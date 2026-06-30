@@ -49,6 +49,11 @@ public class RaytraceTracker extends ConfigModules {
                 The maximum distance to trace entities in blocks.""",
             """
                 最大追踪实体距离, 单位: 方块."""));
+        if (maxTraceDistance <= 0) {
+            LeafConfig.LOGGER.warn("{} is out of range ({}), clamping to 1",
+                getBasePath() + ".max-trace-distance", maxTraceDistance);
+            maxTraceDistance = 1;
+        }
         skipMarkerArmorStand = config.getBoolean(getBasePath() + ".skip-marker-armor-stand", skipMarkerArmorStand, config.pickStringRegionBased(
             """
                 Whether to skip tracing entities with marker armor stand.""",
@@ -61,12 +66,22 @@ public class RaytraceTracker extends ConfigModules {
             """
                 碰撞箱大小限制,
                 实体碰撞箱大于该值将被跳过."""));
+        if (boundingBoxLimit < 0) {
+            LeafConfig.LOGGER.warn("{} is out of range ({}), clamping to 0",
+                getBasePath() + ".bounding-box-limit", boundingBoxLimit);
+            boundingBoxLimit = 0;
+        }
         traceInterval = config.getInt(getBasePath() + ".trace-interval", traceInterval, config.pickStringRegionBased(
             """
                 The interval between each trace in milliseconds.
                 Lower value means more frequent trace.""",
             """
                 追踪间隔(单位: 毫秒), 越小越频繁."""));
+        if (traceInterval < 0) {
+            LeafConfig.LOGGER.warn("{} is out of range ({}), clamping to 0",
+                getBasePath() + ".trace-interval", traceInterval);
+            traceInterval = 0;
+        }
         forceVisibleRadius = config.getDouble(getBasePath() + ".force-visible-radius", forceVisibleRadius, config.pickStringRegionBased(
             """
                 The radius to force visible entities.
@@ -83,6 +98,11 @@ public class RaytraceTracker extends ConfigModules {
             """
                 碰撞箱扩大量.
                 此值将会在射线追踪时添加到实际碰撞箱上."""));
+        if (boundingBoxExpansion < 0) {
+            LeafConfig.LOGGER.warn("{} is out of range ({}), clamping to 0",
+                getBasePath() + ".bounding-box-expansion", boundingBoxExpansion);
+            boundingBoxExpansion = 0;
+        }
         skippedEntities = config.getList(getBasePath() + ".skipped-entities", skippedEntities, config.pickStringRegionBased(
             """
                 The entities to skip tracing.""",

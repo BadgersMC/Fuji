@@ -62,13 +62,16 @@ Fix inverted condition: change `if (tmax > 0) return false` to `if (tmax < 0) re
 
 ---
 
-### TDD-005 — Config value bounds validation
+### TDD-005 — Config value bounds validation [x]
 **Tag:** TDD
 **References:** REQ-005, `RaytraceTracker.java`
 
 Add bounds checks to all numeric config fields: `traceInterval >= 0`, `maxTraceDistance > 0`, `boundingBoxLimit >= 0`, `boundingBoxExpansion >= 0`. Clamp out-of-range values, log a warning.
 
 **Evidence:**
+- `leaf-server/src/main/java/org/dreeam/leaf/config/modules/misc/RaytraceTracker.java:onLoaded()` — four bounds checks added after config reads
+- `leaf-server/src/test/java/org/dreeam/leaf/config/modules/misc/ConfigBoundsProof.java` — design contract proof
+- **Completed:** Added bounds validation for all four numeric fields. Each out-of-range value is clamped to safe minimum and logged via `LeafConfig.LOGGER.warn()`: traceInterval (0), maxTraceDistance (1), boundingBoxLimit (0), boundingBoxExpansion (0). Proof covers negative, zero, edge, and normal values.
 
 ---
 
