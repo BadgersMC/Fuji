@@ -119,7 +119,7 @@ public class CullTask implements Runnable {
             }
             Player player = this.checkTarget;
 
-            if (!cullable.isForcedVisible() || true) { // TODO
+            if (!cullable.isForcedVisible()) {
                 if (entity.isCurrentlyGlowing() || isSkippableArmorstand(entity)) {
                     cullable.setCulled(false, player);
                     continue;

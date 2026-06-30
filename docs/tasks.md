@@ -36,13 +36,16 @@ Replace plain `cullTask` field in `Player.java` patch with `AtomicReference<Cull
 
 ---
 
-### TDD-003 — Fix isForcedVisible dead code
+### TDD-003 — Fix isForcedVisible dead code [x]
 **Tag:** TDD
-**References:** REQ-003, `CullTask.java:115`, `Entity.java` patch
+**References:** REQ-003, `CullTask.java:122`, `Entity.java` patch
 
 Remove `|| true` debug remnant from `isForcedVisible()` condition. Verify the grace period prevents flickering at visibility boundaries.
 
 **Evidence:**
+- `leaf-server/src/main/java/dev/tr7zw/entityculling/CullTask.java:122` — `if (!cullable.isForcedVisible() || true)` always-true condition
+- `leaf-server/src/test/java/dev/tr7zw/entityculling/IsForcedVisibleProof.java` — design contract proof
+- **Completed:** Removed `|| true` from condition. Verified with IsForcedVisibleProof — tests confirm grace period now functional (skips visibility check block when isForcedVisible() returns true).
 
 ---
 
