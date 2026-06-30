@@ -49,13 +49,16 @@ Remove `|| true` debug remnant from `isForcedVisible()` condition. Verify the gr
 
 ---
 
-### TDD-004 — Fix inverted ray-AABB intersection
+### TDD-004 — Fix inverted ray-AABB intersection [x]
 **Tag:** TDD
-**References:** REQ-004, `OcclusionCullingInstance.java:234-254`
+**References:** REQ-004, `OcclusionCullingInstance.java:248-249`
 
 Fix inverted condition: change `if (tmax > 0) return false` to `if (tmax < 0) return false`. Verify ray marches skip hit blocks correctly.
 
 **Evidence:**
+- `leaf-server/src/main/java/com/logisticscraft/occlusionculling/OcclusionCullingInstance.java:248` — `tmax > 0` inverted guard
+- `leaf-server/src/test/java/com/logisticscraft/occlusionculling/RayAabbProof.java` — design contract proof
+- **Completed:** Changed `tmax > 0` → `tmax < 0`. Standard ray-AABB slab method: tmax<0 means entire box behind ray origin. The old `tmax > 0` rejected ALL forward boxes (false negatives). Also fixed behind-box false positives (tmax<0 bypassed guard → slab overlap gave false hit). Proof: 7 assertions covering front hit, behind miss, inside-box, off-axis miss, grazing hit, opposite-direction miss.
 
 ---
 
