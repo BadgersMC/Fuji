@@ -88,13 +88,16 @@ Replace `entity.isInvisible()` with `entity instanceof ArmorStand as && as.isMar
 
 ---
 
-### TDD-007 — Rate-limited error logging
+### TDD-007 — Rate-limited error logging [x]
 **Tag:** TDD
-**References:** REQ-007, `OcclusionCullingInstance.java:143-147`
+**References:** REQ-007, `OcclusionCullingInstance.java:152-161`
 
-Replace `catch(Throwable) { t.printStackTrace(); }` with `catch(Exception e) { Logger.warn(...) }` using a rate-limited guard (e.g., `RateLimiter` or last-logged map with 5s cooldown).
+Replace `catch(Throwable) { t.printStackTrace(); }` with `catch(Exception e) { Logger.warn(...) }` using a rate-limited guard with 5s cooldown per exception type.
 
 **Evidence:**
+- `leaf-server/src/main/java/com/logisticscraft/occlusionculling/OcclusionCullingInstance.java:152-161` — `catch(Throwable) + printStackTrace()` unbounded spam
+- `leaf-server/src/test/java/com/logisticscraft/occlusionculling/ErrorLoggingProof.java` — design contract proof
+- **Completed:** Changed to `catch(Exception)` (Errors pass through), replaced `printStackTrace()` with `LOGGER.warn()` rate-limited by exception class name with 5s cooldown via `HashMap<String, Long>`. Different exception types tracked independently. Proof: 5 assertions covering rate limiting, cooldown, Error passthrough, independent types.
 
 ---
 

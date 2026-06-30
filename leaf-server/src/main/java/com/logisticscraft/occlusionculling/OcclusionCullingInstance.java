@@ -7,6 +7,11 @@ import com.logisticscraft.occlusionculling.util.Vec3d;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OcclusionCullingInstance {
 
@@ -21,6 +26,10 @@ public class OcclusionCullingInstance {
     private final double aabbExpansion;
     private final DataProvider provider;
     private final OcclusionCache cache;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcclusionCullingInstance.class);
+    private static final Map<String, Long> lastErrorLogged = new HashMap<>();
+    private static final long ERROR_LOG_COOLDOWN_MS = 5000;
 
     // Reused allocated data structures
     private final BitSet skipList = new BitSet(); // Grows bigger in case some mod introduces giant hitboxes
@@ -140,9 +149,14 @@ public class OcclusionCullingInstance {
             }
 
             return false;
-        } catch (Throwable t) {
-            // Failsafe
-            t.printStackTrace();
+        } catch (Exception e) {
+            String key = e.getClass().getSimpleName();
+            long now = System.currentTimeMillis();
+            Long last = lastErrorLogged.get(key);
+            if (last == null || now - last >= ERROR_LOG_COOLDOWN_MS) {
+                lastErrorLogged.put(key, now);
+                LOGGER.warn("[OcclusionCulling] {} in isAABBVisible: {}", key, e.getMessage());
+            }
         }
         return true;
     }
