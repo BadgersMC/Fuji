@@ -101,13 +101,15 @@ Replace `catch(Throwable) { t.printStackTrace(); }` with `catch(Exception e) { L
 
 ---
 
-### DOC-008 — Include EntityCulling license
+### DOC-008 — Include EntityCulling license [x]
 **Tag:** DOC
 **References:** REQ-008, tr7zw/EntityCulling
 
 Download or document the EntityCulling "Custom License" text. Add to `leaf-server/` or root as `LICENSE-EntityCulling.txt`.
 
 **Evidence:**
+- `https://raw.githubusercontent.com/tr7zw/EntityCulling/main/LICENSE-EntityCulling` — tr7zw Protective License
+- **Completed:** Downloaded tr7zw Protective License from upstream repo. Saved as `leaf-server/LICENSE-EntityCulling.txt`. License permits use/modification, prohibits commercial advantage or monetary compensation.
 
 ---
 
