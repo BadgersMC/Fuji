@@ -75,13 +75,16 @@ Add bounds checks to all numeric config fields: `traceInterval >= 0`, `maxTraceD
 
 ---
 
-### TDD-006 — Correct armor-stand marker check
+### TDD-006 — Correct armor-stand marker check [x]
 **Tag:** TDD
-**References:** REQ-006, `CullTask.java:196-198`
+**References:** REQ-006, `CullTask.java:205`
 
-Replace `entity.isInvisible()` with `entity instanceof ArmorStand as && as.isMarker()` in `isSkippableArmorstand()`. Rename config key to match behavior if needed.
+Replace `entity.isInvisible()` with `entity instanceof ArmorStand as && as.isMarker()` in `isSkippableArmorstand()`. Config key `skipMarkerArmorStand` already matches corrected behavior — no rename needed.
 
 **Evidence:**
+- `leaf-server/src/main/java/dev/tr7zw/entityculling/CullTask.java:205` — `isInvisible()` (potion effect) used instead of `isMarker()` (NBT tag)
+- `leaf-server/src/test/java/dev/tr7zw/entityculling/ArmorStandCheckProof.java` — design contract proof
+- **Completed:** Changed `isInvisible()` to `isMarker()`. Two bug classes fixed: (1) invisible non-marker armor stands (potion effect) were wrongly skipped, (2) marker armor stands without invisibility potion were NOT skipped. Config key `skipMarkerArmorStand` already uses the correct terminology.
 
 ---
 

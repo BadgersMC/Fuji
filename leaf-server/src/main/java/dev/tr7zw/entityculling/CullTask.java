@@ -202,7 +202,7 @@ public class CullTask implements Runnable {
 
     private boolean isSkippableArmorstand(Entity entity) {
         if (!RaytraceTracker.skipMarkerArmorStand) return false;
-        return entity instanceof ArmorStand && entity.isInvisible();
+        return entity instanceof ArmorStand as && as.isMarker();
     }
 
     public boolean isEntityCulled(Entity entity) {
