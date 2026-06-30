@@ -113,13 +113,18 @@ Download or document the EntityCulling "Custom License" text. Add to `leaf-serve
 
 ---
 
-### TDD-009 — Immutable Vec3d record
+### TDD-009 — Immutable Vec3d record [x]
 **Tag:** TDD
 **References:** `Vec3d.java`, `OcclusionCullingInstance.java`, implementation.md
 
-Replace mutable `Vec3d` class with `record Vec3d(double x, double y, double z)`. Update all call sites. Make `OcclusionCullingInstance.isAABBVisible()` accept parameters instead of mutating instance fields.
+Replace mutable `Vec3d` class with `record Vec3d(double x, double y, double z)`. Update all call sites. 
 
 **Evidence:**
+- `leaf-server/src/main/java/com/logisticscraft/occlusionculling/util/Vec3d.java` — converted from mutable class to Java record
+- `leaf-server/src/main/java/com/logisticscraft/occlusionculling/OcclusionCullingInstance.java` — 14 setAdd() → add(), 1 set() → constructor, 24 field accesses → accessor methods
+- `leaf-server/src/main/java/dev/tr7zw/entityculling/CullTask.java` — 3 set() → constructor, 3 field accesses → accessor methods
+- `leaf-server/src/test/java/com/logisticscraft/occlusionculling/util/Vec3dRecordProof.java` — design contract proof
+- **Completed:** Vec3d is now an immutable record. `div()` and `normalize()` return new instances (no `this` mutation). `set()` and `setAdd()` replaced with constructor and `add()` factory. CullTask fields (lastPos, aabbMin, aabbMax) and OcclusionCullingInstance field (targetPos) made non-final for reassignment. Proof: 6 assertions covering shared-state corruption prevention.
 
 ---
 

@@ -33,9 +33,9 @@ public class CullTask implements Runnable {
 
     private final int hitboxLimit;
 
-    private final Vec3d lastPos = new Vec3d(0, 0, 0);
-    private final Vec3d aabbMin = new Vec3d(0, 0, 0);
-    private final Vec3d aabbMax = new Vec3d(0, 0, 0);
+    private Vec3d lastPos = new Vec3d(0, 0, 0);
+    private Vec3d aabbMin = new Vec3d(0, 0, 0);
+    private Vec3d aabbMax = new Vec3d(0, 0, 0);
     private final AtomicBoolean dirty = new AtomicBoolean(false);
 
     private static final Executor backgroundWorker = Executors.newCachedThreadPool(
@@ -88,9 +88,9 @@ public class CullTask implements Runnable {
                     culledEntities.remove(entityId);
                 }
                 Vec3 cameraMC = this.checkTarget.getEyePosition(0);
-                boolean cameraMoved = !(cameraMC.x == lastPos.x && cameraMC.y == lastPos.y && cameraMC.z == lastPos.z);
+                boolean cameraMoved = !(cameraMC.x == lastPos.x() && cameraMC.y == lastPos.y() && cameraMC.z == lastPos.z());
                 if (cameraMoved) {
-                    lastPos.set(cameraMC.x, cameraMC.y, cameraMC.z);
+                    lastPos = new Vec3d(cameraMC.x, cameraMC.y, cameraMC.z);
                 }
                 // REQ-001: Dirty flag coalesces N block changes into 1 cache reset per tick.
                 // Camera movement also triggers reset (existing behavior).
@@ -144,8 +144,8 @@ public class CullTask implements Runnable {
                     continue;
                 }
 
-                aabbMin.set(boundingBox.minX, boundingBox.minY, boundingBox.minZ);
-                aabbMax.set(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ);
+                aabbMin = new Vec3d(boundingBox.minX, boundingBox.minY, boundingBox.minZ);
+                aabbMax = new Vec3d(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ);
 
                 synchronized (culling) {
                     boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
