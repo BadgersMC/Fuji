@@ -63,6 +63,7 @@ Fuji is **Leaf `ver/1.21.11`** with **every Sakura `1.21.11` patch** folded in a
 ### 🗻 Fuji's own
 - **Instant falling-block stacking** — sand drops straight onto a matching pile as blocks instead of spawning gravity entities *(opt-in)*
 - **Roof-cannon height nerf** — only clear above-limit entities that are still moving horizontally, so cannons firing over walls and back down survive *(opt-in)*
+- **Raytrace entity tracker** — path-traces visibility rays from player to entity through the current subchunk cache, skipping entities fully behind solid blocks. Reduces tracking load and packet volume — entities behind walls never get sent to clients *(opt-in, off by default)*
 
 ## The architecture it's built for
 
