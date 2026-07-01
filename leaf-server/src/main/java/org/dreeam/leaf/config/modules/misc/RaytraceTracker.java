@@ -1,7 +1,7 @@
 package org.dreeam.leaf.config.modules.misc;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import org.dreeam.leaf.config.ConfigModules;
 import org.dreeam.leaf.config.EnumConfigCategory;
@@ -121,15 +121,15 @@ public class RaytraceTracker extends ConfigModules {
             entityType.skipRaytraceCheck = invertSkipEntities;
         }
 
-        final String DEFAULT_PREFIX = ResourceLocation.DEFAULT_NAMESPACE + ResourceLocation.NAMESPACE_SEPARATOR;
+        final String DEFAULT_PREFIX = Identifier.DEFAULT_NAMESPACE + Identifier.NAMESPACE_SEPARATOR;
 
         for (String name : skippedEntities) {
             String lowerName = name.trim().toLowerCase(Locale.ROOT);
-            String typeId = lowerName.indexOf(ResourceLocation.NAMESPACE_SEPARATOR) >= 0
+            String typeId = lowerName.indexOf(Identifier.NAMESPACE_SEPARATOR) >= 0
                 ? lowerName
                 : DEFAULT_PREFIX + lowerName;
 
-            EntityType.byString(typeId).ifPresentOrElse(entityType ->
+            BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.parse(typeId)).ifPresentOrElse(entityType ->
                     entityType.skipRaytraceCheck = !invertSkipEntities,
                 () -> LeafConfig.LOGGER.warn("Skip unknown entity {}, in {}", name, getBasePath() + ".skipped-entities")
             );

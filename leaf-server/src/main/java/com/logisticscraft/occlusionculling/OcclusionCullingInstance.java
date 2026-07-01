@@ -34,7 +34,7 @@ public class OcclusionCullingInstance {
     // Reused allocated data structures
     private final BitSet skipList = new BitSet(); // Grows bigger in case some mod introduces giant hitboxes
     private final Vec3d[] targetPoints = new Vec3d[15];
-    private final Vec3d targetPos = new Vec3d(0, 0, 0);
+    private Vec3d targetPos = new Vec3d(0, 0, 0);
     private final int[] cameraPos = new int[3];
     private final boolean[] dotselectors = new boolean[14];
     private boolean allowRayChecks = false;
@@ -226,21 +226,21 @@ public class OcclusionCullingInstance {
             dotselectors[13] = true;
         }
 
-        if (dotselectors[0]) targetPoints[targetSize++] = position, 0.05, 0.05, 0.05);
-        if (dotselectors[1]) targetPoints[targetSize++] = position, 0.05, 0.95, 0.05);
-        if (dotselectors[2]) targetPoints[targetSize++] = position, 0.05, 0.95, 0.95);
-        if (dotselectors[3]) targetPoints[targetSize++] = position, 0.05, 0.05, 0.95);
-        if (dotselectors[4]) targetPoints[targetSize++] = position, 0.95, 0.05, 0.05);
-        if (dotselectors[5]) targetPoints[targetSize++] = position, 0.95, 0.95, 0.05);
-        if (dotselectors[6]) targetPoints[targetSize++] = position, 0.95, 0.95, 0.95);
-        if (dotselectors[7]) targetPoints[targetSize++] = position, 0.95, 0.05, 0.95);
+        if (dotselectors[0]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.05, position.y() + 0.05, position.z() + 0.05);
+        if (dotselectors[1]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.05, position.y() + 0.95, position.z() + 0.05);
+        if (dotselectors[2]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.05, position.y() + 0.95, position.z() + 0.95);
+        if (dotselectors[3]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.05, position.y() + 0.05, position.z() + 0.95);
+        if (dotselectors[4]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.95, position.y() + 0.05, position.z() + 0.05);
+        if (dotselectors[5]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.95, position.y() + 0.95, position.z() + 0.05);
+        if (dotselectors[6]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.95, position.y() + 0.95, position.z() + 0.95);
+        if (dotselectors[7]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.95, position.y() + 0.05, position.z() + 0.95);
         // middle points
-        if (dotselectors[8]) targetPoints[targetSize++] = position, 0.05, 0.5, 0.5);
-        if (dotselectors[9]) targetPoints[targetSize++] = position, 0.5, 0.05, 0.5);
-        if (dotselectors[10]) targetPoints[targetSize++] = position, 0.5, 0.5, 0.05);
-        if (dotselectors[11]) targetPoints[targetSize++] = position, 0.95, 0.5, 0.5);
-        if (dotselectors[12]) targetPoints[targetSize++] = position, 0.5, 0.95, 0.5);
-        if (dotselectors[13]) targetPoints[targetSize++] = position, 0.5, 0.5, 0.95);
+        if (dotselectors[8]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.05, position.y() + 0.5, position.z() + 0.5);
+        if (dotselectors[9]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.5, position.y() + 0.05, position.z() + 0.5);
+        if (dotselectors[10]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.5, position.y() + 0.5, position.z() + 0.05);
+        if (dotselectors[11]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.95, position.y() + 0.5, position.z() + 0.5);
+        if (dotselectors[12]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.5, position.y() + 0.95, position.z() + 0.5);
+        if (dotselectors[13]) targetPoints[targetSize++] = new Vec3d(position.x() + 0.5, position.y() + 0.5, position.z() + 0.95);
 
         return isVisible(viewerPosition, targetPoints, targetSize);
     }
@@ -284,9 +284,9 @@ public class OcclusionCullingInstance {
             // ray-casting target
             Vec3d target = targets[v];
 
-            double relativeX = start.x() - target.getX();
-            double relativeY = start.y() - target.getY();
-            double relativeZ = start.z() - target.getZ();
+            double relativeX = start.x() - target.x();
+            double relativeY = start.y() - target.y();
+            double relativeZ = start.z() - target.z();
 
             if (allowRayChecks && rayIntersection(lastHitBlock, start, new Vec3d(relativeX, relativeY, relativeZ).normalize())) {
                 continue;
