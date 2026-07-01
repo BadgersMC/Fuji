@@ -16,7 +16,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.dreeam.leaf.config.modules.misc.RaytraceTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -48,6 +51,10 @@ public class CullTask implements Runnable {
 
     private static final Set<CullTask> tasks = ConcurrentHashMap.newKeySet();
     private final Set<Integer> culledEntities = IntSets.synchronize(new IntOpenHashSet());
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CullTask.class);
+    private static final Map<String, Long> lastErrorLogged = new ConcurrentHashMap<>();
+    private static final long ERROR_LOG_COOLDOWN_MS = 5000;
     private final Queue<Integer> removalQueue = new ConcurrentLinkedQueue<>();
 
     private final Executor worker;
@@ -100,6 +107,14 @@ public class CullTask implements Runnable {
                     }
                 }
                 cullEntities(cameraMC, lastPos);
+            }
+        } catch (Exception e) {
+            String key = e.getClass().getSimpleName();
+            long now = System.currentTimeMillis();
+            Long last = lastErrorLogged.get(key);
+            if (last == null || now - last >= ERROR_LOG_COOLDOWN_MS) {
+                lastErrorLogged.put(key, now);
+                LOGGER.warn("[CullTask] {} in run: {}", key, e.getMessage());
             }
         } finally {
             if (this.scheduleNext) {
@@ -171,6 +186,8 @@ public class CullTask implements Runnable {
         // REQ-001: Use lock-free dirty flag instead of spawning unbounded async tasks.
         // Each player's CullTask checks the flag in its periodic tick and resets
         // the cache at most once per trace interval, regardless of block change burst size.
+        // PERF: O(players) per block change, but bounds check (L183-185) skips
+        // players >maxTraceDistance away. Acceptable at typical player counts.
         for (Player player : playerList.realPlayers) {
             CullTask cullTask = player.cullTask.get();
             if (cullTask == null) continue;
