@@ -119,39 +119,42 @@ public class CullTask implements Runnable {
             }
             Player player = this.checkTarget;
 
-            if (!cullable.isForcedVisible()) {
-                if (entity.isCurrentlyGlowing() || isSkippableArmorstand(entity)) {
-                    cullable.setCulled(false, player);
-                    continue;
-                }
+            if (cullable.isForcedVisible()) {
+                cullable.setCulled(false, player);
+                continue;
+            }
 
-                final double distanceSqr = entity.position().distanceToSqr(cameraMC);
-                if (distanceSqr < RaytraceTracker.forceVisibleRadius * RaytraceTracker.forceVisibleRadius) {
-                    cullable.setCulled(false, player);
-                    continue;
-                }
+            if (entity.isCurrentlyGlowing() || isSkippableArmorstand(entity)) {
+                cullable.setCulled(false, player);
+                continue;
+            }
 
-                if (distanceSqr >= RaytraceTracker.maxTraceDistance * RaytraceTracker.maxTraceDistance) {
-                    cullable.setCulled(false, player); // If your entity view distance is larger than tracingDistance just
-                    // render it
-                    continue;
-                }
+            final double distanceSqr = entity.position().distanceToSqr(cameraMC);
+            if (distanceSqr < RaytraceTracker.forceVisibleRadius * RaytraceTracker.forceVisibleRadius) {
+                cullable.setCulled(false, player);
+                continue;
+            }
 
-                AABB boundingBox = entity.getBoundingBox();
-                if (boundingBox.getXsize() > hitboxLimit || boundingBox.getYsize() > hitboxLimit
-                    || boundingBox.getZsize() > hitboxLimit) {
-                    cullable.setCulled(false, player); // Too big to bother to cull
-                    continue;
-                }
+            if (distanceSqr >= RaytraceTracker.maxTraceDistance * RaytraceTracker.maxTraceDistance) {
+                cullable.setCulled(false, player); // If your entity view distance is larger than tracingDistance just
+                // render it
+                continue;
+            }
 
-                aabbMin = new Vec3d(boundingBox.minX, boundingBox.minY, boundingBox.minZ);
-                aabbMax = new Vec3d(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ);
+            AABB boundingBox = entity.getBoundingBox();
+            if (boundingBox.getXsize() > hitboxLimit || boundingBox.getYsize() > hitboxLimit
+                || boundingBox.getZsize() > hitboxLimit) {
+                cullable.setCulled(false, player); // Too big to bother to cull
+                continue;
+            }
 
-                synchronized (culling) {
-                    boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
+            aabbMin = new Vec3d(boundingBox.minX, boundingBox.minY, boundingBox.minZ);
+            aabbMax = new Vec3d(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ);
 
-                    cullable.setCulled(!visible, player);
-                }
+            synchronized (culling) {
+                boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
+
+                cullable.setCulled(!visible, player);
             }
         }
     }

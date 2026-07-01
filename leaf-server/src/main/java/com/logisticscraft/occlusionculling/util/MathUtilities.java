@@ -14,7 +14,7 @@ public final class MathUtilities {
     }
 
     public static int fastFloor(double d) {
-        return (int) (d + 1024.0) - 1024;
+        return floor(d);
     }
 
     public static int ceil(double d) {

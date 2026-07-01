@@ -43,7 +43,7 @@ diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity
      // Leaf end - Optimize Entity distanceToSqr
 +
 +    // Leaf start - Raytrace entity tracker
-+    private long lastTime = 0;
++    private volatile long lastTime = 0;
 +
 +    @Override
 +    public void setTimeout() {
@@ -132,9 +132,9 @@ diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world
 +                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.boundingBoxLimit,
 +                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.traceInterval
 +                    );
-+                    newTask.setup();
 +                    this.cullTask.set(newTask);
 +                    this.lastCullWorld = currLevel;
++                    newTask.setup();
 +                }
 +            }
 +        }

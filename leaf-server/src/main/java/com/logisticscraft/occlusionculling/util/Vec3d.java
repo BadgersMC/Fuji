@@ -18,6 +18,9 @@ public record Vec3d(double x, double y, double z) {
 
     public Vec3d normalize() {
         double mag = Math.sqrt(x * x + y * y + z * z);
+        if (mag == 0.0) {
+            return this;
+        }
         return new Vec3d(x / mag, y / mag, z / mag);
     }
 }

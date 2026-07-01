@@ -77,10 +77,10 @@ public class RaytraceTracker extends ConfigModules {
                 Lower value means more frequent trace.""",
             """
                 追踪间隔(单位: 毫秒), 越小越频繁."""));
-        if (traceInterval < 0) {
-            LeafConfig.LOGGER.warn("{} is out of range ({}), clamping to 0",
+        if (traceInterval <= 0) {
+            LeafConfig.LOGGER.warn("{} is out of range ({}), clamping to 1",
                 getBasePath() + ".trace-interval", traceInterval);
-            traceInterval = 0;
+            traceInterval = 1;
         }
         forceVisibleRadius = config.getDouble(getBasePath() + ".force-visible-radius", forceVisibleRadius, config.pickStringRegionBased(
             """
@@ -124,8 +124,10 @@ public class RaytraceTracker extends ConfigModules {
         final String DEFAULT_PREFIX = ResourceLocation.DEFAULT_NAMESPACE + ResourceLocation.NAMESPACE_SEPARATOR;
 
         for (String name : skippedEntities) {
-            String lowerName = name.toLowerCase(Locale.ROOT);
-            String typeId = lowerName.startsWith(DEFAULT_PREFIX) ? lowerName : DEFAULT_PREFIX + lowerName;
+            String lowerName = name.trim().toLowerCase(Locale.ROOT);
+            String typeId = lowerName.indexOf(ResourceLocation.NAMESPACE_SEPARATOR) >= 0
+                ? lowerName
+                : DEFAULT_PREFIX + lowerName;
 
             EntityType.byString(typeId).ifPresentOrElse(entityType ->
                     entityType.skipRaytraceCheck = !invertSkipEntities,
