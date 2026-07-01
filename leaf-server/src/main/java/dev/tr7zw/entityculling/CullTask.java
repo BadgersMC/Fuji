@@ -111,11 +111,13 @@ public class CullTask implements Runnable {
         } catch (Exception e) {
             String key = e.getClass().getSimpleName();
             long now = System.currentTimeMillis();
-            Long last = lastErrorLogged.get(key);
-            if (last == null || now - last >= ERROR_LOG_COOLDOWN_MS) {
-                lastErrorLogged.put(key, now);
-                LOGGER.warn("[CullTask] {} in run: {}", key, e.getMessage());
-            }
+            lastErrorLogged.compute(key, (k, last) -> {
+                if (last == null || now - last >= ERROR_LOG_COOLDOWN_MS) {
+                    LOGGER.warn("[CullTask] {} in run", key, e);
+                    return now;
+                }
+                return last;
+            });
         } finally {
             if (this.scheduleNext) {
                 this.worker.execute(this);

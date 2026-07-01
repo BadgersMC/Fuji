@@ -129,9 +129,14 @@ public class RaytraceTracker extends ConfigModules {
                 ? lowerName
                 : DEFAULT_PREFIX + lowerName;
 
-            BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.parse(typeId)).ifPresentOrElse(entityType ->
+            Identifier id = Identifier.tryParse(typeId);
+            if (id == null) {
+                LeafConfig.LOGGER.warn("Invalid entity ID {}, in {}", name, getBasePath() + ".skipped-entities");
+                continue;
+            }
+            BuiltInRegistries.ENTITY_TYPE.getOptional(id).ifPresentOrElse(entityType ->
                     entityType.skipRaytraceCheck = !invertSkipEntities,
-                () -> LeafConfig.LOGGER.warn("Skip unknown entity {}, in {}", name, getBasePath() + ".skipped-entities")
+                () -> LeafConfig.LOGGER.warn("Unknown entity {}, in {}", name, getBasePath() + ".skipped-entities")
             );
         }
     }
