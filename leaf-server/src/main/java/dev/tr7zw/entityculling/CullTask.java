@@ -1,0 +1,241 @@
+package dev.tr7zw.entityculling;
+
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
+import com.logisticscraft.occlusionculling.util.Vec3d;
+import dev.tr7zw.entityculling.versionless.access.Cullable;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSets;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.dreeam.leaf.config.modules.misc.RaytraceTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class CullTask implements Runnable {
+
+    private static final String THREAD_PREFIX = "Leaf Raytrace Tracker";
+    private volatile boolean scheduleNext = true;
+    private volatile boolean isInit = false;
+
+    private final OcclusionCullingInstance culling;
+    private final Player checkTarget;
+
+    private final int hitboxLimit;
+
+    private Vec3d lastPos = new Vec3d(0, 0, 0);
+    private Vec3d aabbMin = new Vec3d(0, 0, 0);
+    private Vec3d aabbMax = new Vec3d(0, 0, 0);
+    private final AtomicBoolean dirty = new AtomicBoolean(false);
+
+    private static final Executor backgroundWorker = Executors.newCachedThreadPool(
+        new ThreadFactoryBuilder()
+            .setNameFormat(THREAD_PREFIX + " Thread - %d")
+            .setDaemon(true)
+            .setPriority(Thread.NORM_PRIORITY - 1)
+            .build()
+    );
+
+    private static final Set<CullTask> tasks = ConcurrentHashMap.newKeySet();
+    private final Set<Integer> culledEntities = IntSets.synchronize(new IntOpenHashSet());
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CullTask.class);
+    private static final Map<String, Long> lastErrorLogged = new ConcurrentHashMap<>();
+    private static final long ERROR_LOG_COOLDOWN_MS = 5000;
+    private final Queue<Integer> removalQueue = new ConcurrentLinkedQueue<>();
+
+    private final Executor worker;
+
+    public CullTask(
+        OcclusionCullingInstance culling,
+        Player checkTarget,
+        int hitboxLimit,
+        long checkIntervalMs
+    ) {
+        this.culling = culling;
+        this.checkTarget = checkTarget;
+        this.hitboxLimit = hitboxLimit;
+        this.worker = CompletableFuture.delayedExecutor(checkIntervalMs, TimeUnit.MILLISECONDS, backgroundWorker);
+    }
+
+    public void signalStop() {
+        this.scheduleNext = false;
+        tasks.remove(this);
+    }
+
+    public void setup() {
+        if (!this.isInit) {
+            this.isInit = true;
+        } else {
+            return;
+        }
+        this.worker.execute(this);
+        tasks.add(this);
+    }
+
+    @Override
+    public synchronized void run() {
+        try {
+            if (this.checkTarget.tickCount > 10) {
+                while (!removalQueue.isEmpty()) {
+                    int entityId = removalQueue.poll();
+                    culledEntities.remove(entityId);
+                }
+                Vec3 cameraMC = this.checkTarget.getEyePosition(0);
+                boolean cameraMoved = !(cameraMC.x == lastPos.x() && cameraMC.y == lastPos.y() && cameraMC.z == lastPos.z());
+                if (cameraMoved) {
+                    lastPos = new Vec3d(cameraMC.x, cameraMC.y, cameraMC.z);
+                }
+                // REQ-001: Dirty flag coalesces N block changes into 1 cache reset per tick.
+                // Camera movement also triggers reset (existing behavior).
+                if (cameraMoved || dirty.compareAndSet(true, false)) {
+                    synchronized (culling) {
+                        culling.resetCache();
+                    }
+                }
+                cullEntities(cameraMC, lastPos);
+            }
+        } catch (Exception e) {
+            String key = e.getClass().getSimpleName();
+            long now = System.currentTimeMillis();
+            lastErrorLogged.compute(key, (k, last) -> {
+                if (last == null || now - last >= ERROR_LOG_COOLDOWN_MS) {
+                    LOGGER.warn("[CullTask] {} in run", key, e);
+                    return now;
+                }
+                return last;
+            });
+        } finally {
+            if (this.scheduleNext) {
+                this.worker.execute(this);
+            }
+        }
+    }
+
+    private void cullEntities(Vec3 cameraMC, Vec3d camera) {
+        for (Entity entity : this.checkTarget.level().getEntities().getAll()) { // This one's safe here; moonrise returns an array for us to iterate
+            if (!(entity instanceof Cullable cullable) || entity == this.checkTarget) {
+                continue;
+            }
+
+            if (entity.getType().skipRaytraceCheck) {
+                continue;
+            }
+            Player player = this.checkTarget;
+
+            if (cullable.isForcedVisible()) {
+                cullable.setCulled(false, player);
+                continue;
+            }
+
+            if (entity.isCurrentlyGlowing() || isSkippableArmorstand(entity)) {
+                cullable.setCulled(false, player);
+                continue;
+            }
+
+            final double distanceSqr = entity.position().distanceToSqr(cameraMC);
+            if (distanceSqr < RaytraceTracker.forceVisibleRadius * RaytraceTracker.forceVisibleRadius) {
+                cullable.setCulled(false, player);
+                continue;
+            }
+
+            if (distanceSqr >= RaytraceTracker.maxTraceDistance * RaytraceTracker.maxTraceDistance) {
+                cullable.setCulled(false, player); // If your entity view distance is larger than tracingDistance just
+                // render it
+                continue;
+            }
+
+            AABB boundingBox = entity.getBoundingBox();
+            if (boundingBox.getXsize() > hitboxLimit || boundingBox.getYsize() > hitboxLimit
+                || boundingBox.getZsize() > hitboxLimit) {
+                cullable.setCulled(false, player); // Too big to bother to cull
+                continue;
+            }
+
+            aabbMin = new Vec3d(boundingBox.minX, boundingBox.minY, boundingBox.minZ);
+            aabbMax = new Vec3d(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ);
+
+            synchronized (culling) {
+                boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
+
+                cullable.setCulled(!visible, player);
+            }
+        }
+    }
+
+    public static void onBlockChange(Level level, BlockPos pos) {
+        if (!RaytraceTracker.enabled) {
+            return;
+        }
+        MinecraftServer server = level.getServer();
+        if (server == null) {
+            return;
+        }
+        PlayerList playerList = server.getPlayerList();
+        // REQ-001: Use lock-free dirty flag instead of spawning unbounded async tasks.
+        // Each player's CullTask checks the flag in its periodic tick and resets
+        // the cache at most once per trace interval, regardless of block change burst size.
+        // PERF: O(players) per block change, but bounds check (L183-185) skips
+        // players >maxTraceDistance away. Acceptable at typical player counts.
+        for (Player player : playerList.realPlayers) {
+            CullTask cullTask = player.cullTask.get();
+            if (cullTask == null) continue;
+            if (player.level() == level) {
+                int posX = pos.getX();
+                int posY = pos.getY();
+                int posZ = pos.getZ();
+                BlockPos playerPos = player.blockPosition();
+                final int playerX = playerPos.getX(), playerY = playerPos.getY(), playerZ = playerPos.getZ();
+                if (Math.abs(posX - playerX) < RaytraceTracker.maxTraceDistance
+                    && Math.abs(posY - playerY) < RaytraceTracker.maxTraceDistance
+                    && Math.abs(posZ - playerZ) < RaytraceTracker.maxTraceDistance) {
+                    cullTask.dirty.set(true);
+                }
+            }
+        }
+    }
+
+    public static void onEntityRemoval(Entity entity) {
+        if (!RaytraceTracker.enabled) return;
+        int id = entity.getId();
+        CompletableFuture.runAsync(() -> {
+            for (CullTask cullTask : tasks) {
+                cullTask.scheduleForRemoval(id);
+            }
+        }, backgroundWorker);
+    }
+
+    public void scheduleForRemoval(int entityId) {
+        removalQueue.offer(entityId);
+    }
+
+    private boolean isSkippableArmorstand(Entity entity) {
+        if (!RaytraceTracker.skipMarkerArmorStand) return false;
+        return entity instanceof ArmorStand as && as.isMarker();
+    }
+
+    public boolean isEntityCulled(Entity entity) {
+        return culledEntities.contains(entity.getId());
+    }
+
+    public void setCulled(Entity entity, boolean value) {
+        if (value) {
+            culledEntities.add(entity.getId());
+        } else {
+            culledEntities.remove(entity.getId());
+        }
+    }
+}
