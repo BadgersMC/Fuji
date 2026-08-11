@@ -46,7 +46,7 @@ jobs:
           commit=$(gh api "repos/$REPO/commits/$BRANCH")
           sha=$(jq -r '.sha' <<<"$commit")
           short=${sha:0:7}
-          msg=$(jq -r '.commit.message' <<<"$commit" | head -1)
+          msg=$(jq -r '.commit.message | split("\n")[0]' <<<"$commit")
           titlemsg=$(printf '%s' "$msg" | cut -c1-60)
           author=$(jq -r '.commit.author.name' <<<"$commit")
           date=$(jq -r '.commit.author.date' <<<"$commit")
@@ -79,7 +79,7 @@ jobs:
             del=$(jq -r '[.files[]?.deletions] | add // 0' <<<"$cmp")
             nfiles=$(jq -r '[.files[]?] | length' <<<"$cmp")
             stats="**$ncommits** commit(s) · **$nfiles** file(s) · **+$add / -$del**"
-            filelist=$(jq -r '.files[]? | "- `\(.status)` `\(.filename)` (+\(.additions)/-\(.deletions))"' <<<"$cmp" | head -30)
+            filelist=$(jq -r '[.files[]? | "- `\(.status)` `\(.filename)` (+\(.additions)/-\(.deletions))"] | .[:30] | join("\n")' <<<"$cmp")
           fi
 
           # Build the issue body

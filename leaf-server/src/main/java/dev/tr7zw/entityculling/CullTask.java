@@ -3,6 +3,8 @@ package dev.tr7zw.entityculling;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
 import com.logisticscraft.occlusionculling.util.Vec3d;
+import ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel;
+import ca.spottedleaf.moonrise.patches.chunk_system.level.entity.EntityLookup;
 import dev.tr7zw.entityculling.versionless.access.Cullable;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSets;
@@ -126,7 +128,8 @@ public class CullTask implements Runnable {
     }
 
     private void cullEntities(Vec3 cameraMC, Vec3d camera) {
-        for (Entity entity : this.checkTarget.level().getEntities().getAll()) { // This one's safe here; moonrise returns an array for us to iterate
+        EntityLookup entityLookup = ((ChunkSystemLevel) this.checkTarget.level()).moonrise$getEntityLookup();
+        for (Entity entity : entityLookup.getAll()) {
             if (!(entity instanceof Cullable cullable) || entity == this.checkTarget) {
                 continue;
             }
