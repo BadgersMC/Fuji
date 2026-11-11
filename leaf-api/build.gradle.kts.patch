@@ -44,7 +44,7 @@
  
      // Deprecate bungeecord-chat in favor of adventure
      api("net.md-5:bungeecord-chat:$bungeeCordChatVersion") {
-@@ -77,9 +_,11 @@
+@@ -77,9 +_,12 @@
      apiAndDocs("net.kyori:adventure-text-serializer-plain")
      apiAndDocs("net.kyori:adventure-text-logger-slf4j")
  
@@ -55,6 +55,7 @@
 +    api("org.apache.maven:maven-resolver-provider:3.9.16") // make API dependency for Paper Plugins
 +    implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.27") // Dreeam TODO - Update to 2.0.1
 +    implementation("org.apache.maven.resolver:maven-resolver-transport-http:1.9.27") // Dreeam TODO - Update to 2.0.1
++    compileOnly("org.spongepowered:configurate-yaml:4.2.0") // Sakura - durable material configuration
 +    // Leaf end - Bump Dependencies
  
      // Annotations - Slowly migrate to jspecify

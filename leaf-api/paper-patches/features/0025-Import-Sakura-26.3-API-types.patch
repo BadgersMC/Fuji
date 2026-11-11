@@ -1,0 +1,1323 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Tue, 10 Nov 2026 20:58:18 -0500
+Subject: [PATCH] Import Sakura 26.3 API types
+
+
+diff --git a/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationContainer.java b/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationContainer.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..7f95ab1074aad7c5f333c15d6a9fd96b1c29f5a3
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationContainer.java
+@@ -0,0 +1,106 @@
++package me.samsuik.sakura.configuration.local;
++
++import com.google.common.base.Preconditions;
++import org.jetbrains.annotations.ApiStatus;
++import org.jspecify.annotations.NullMarked;
++import org.jspecify.annotations.Nullable;
++
++import java.util.IdentityHashMap;
++import java.util.Map;
++import java.util.Optional;
++
++/**
++ * A container for configuration values.
++ */
++@NullMarked
++public sealed class ConfigurationContainer implements Container<ConfigurationKey<?>, Object> {
++    private final IdentityHashMap<ConfigurationKey<?>, Object> values = new IdentityHashMap<>();
++
++    public static SealedConfigurationContainer sealedContainer(final Object... contents) {
++        if (contents.length % 2 != 0) {
++            throw new IllegalArgumentException("Expected an even number of contents, got " + contents.length);
++        }
++        final IdentityHashMap<ConfigurationKey<?>, Object> values = new IdentityHashMap<>();
++        for (int index = 0; index < contents.length; index += 2) {
++            final Object key = contents[index];
++            final Object value = contents[index + 1];
++            if (!(key instanceof ConfigurationKey<?> configurationKey)) {
++                throw new IllegalArgumentException("Key at index " + index + " must be of type ConfigurableKey");
++            }
++            values.put(configurationKey, configurationKey.validate(value));
++        }
++        return new SealedConfigurationContainer(values);
++    }
++
++    private ConfigurationContainer(final IdentityHashMap<ConfigurationKey<?>, Object> values) {
++        this.values.putAll(values);
++    }
++
++    public ConfigurationContainer() {}
++
++    public <V> @Nullable V set(final ConfigurationKey<V> key, final V value) {
++        Preconditions.checkNotNull(value, "Value cannot be null");
++        return key.conform(this.values.put(key, value));
++    }
++
++    public <V> @Nullable V remove(final ConfigurationKey<V> key) {
++        return key.conform(this.values.remove(key));
++    }
++
++    public final <V> @Nullable V get(final ConfigurationKey<V> key) {
++        return key.conform(this.values.get(key));
++    }
++
++    public final <V> Optional<V> getOptional(final ConfigurationKey<V> key) {
++        return Optional.ofNullable(this.get(key));
++    }
++
++    @ApiStatus.Internal
++    public final void fillAbsentValues(final ConfigurationContainer container) {
++        for (final Map.Entry<ConfigurationKey<?>, Object> entry : container.values.entrySet()) {
++            this.values.putIfAbsent(entry.getKey(), entry.getValue());
++        }
++    }
++
++    public void clear() {
++        this.values.clear();
++    }
++
++    @Override
++    public final Map<ConfigurationKey<?>, Object> contents() {
++        return Map.copyOf(this.values);
++    }
++
++    public final ConfigurationContainer open() {
++        return this instanceof SealedConfigurationContainer
++            ? new ConfigurationContainer(this.values)
++            : this;
++    }
++
++    public final SealedConfigurationContainer seal() {
++        return this instanceof SealedConfigurationContainer sealed
++            ? sealed
++            : new SealedConfigurationContainer(this.values);
++    }
++
++    public static final class SealedConfigurationContainer extends ConfigurationContainer {
++        private SealedConfigurationContainer(final IdentityHashMap<ConfigurationKey<?>, Object> values) {
++            super(values);
++        }
++
++        @Override
++        public <V> V set(final ConfigurationKey<V> key, final V value) {
++            throw new UnsupportedOperationException("Container is sealed");
++        }
++
++        @Override
++        public <V> V remove(final ConfigurationKey<V> key) {
++            throw new UnsupportedOperationException("Container is sealed");
++        }
++
++        @Override
++        public void clear() {
++            throw new UnsupportedOperationException("Container is sealed");
++        }
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationKey.java b/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationKey.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..09ab30c53dbb541850f15787e9f484a4a7b183c7
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationKey.java
+@@ -0,0 +1,30 @@
++package me.samsuik.sakura.configuration.local;
++
++import net.kyori.adventure.key.Key;
++import net.kyori.adventure.key.Keyed;
++import org.jspecify.annotations.NullMarked;
++import org.jspecify.annotations.Nullable;
++
++/**
++ * A key for a configurable value.
++ */
++@NullMarked
++public record ConfigurationKey<T>(Key key, Class<T> expectedType) implements Keyed {
++    public T validate(@Nullable final Object value) {
++        final T casted = this.conform(value);
++        if (casted == null) {
++            throw new IllegalArgumentException("Value cannot be null for key " + this);
++        }
++        return casted;
++    }
++
++    public @Nullable T conform(@Nullable final Object value) {
++        if (value == null) {
++            return null;
++        }
++        if (!this.expectedType.isInstance(value)) {
++            throw new IllegalArgumentException("Expected type " + this.expectedType.getName() + " but got " + value.getClass().getName());
++        }
++        return this.expectedType.cast(value);
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationKeys.java b/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationKeys.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..32541e4ff0e9adb934adc93654b6fce3876ca6dd
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/configuration/local/ConfigurationKeys.java
+@@ -0,0 +1,31 @@
++package me.samsuik.sakura.configuration.local;
++
++import me.samsuik.sakura.entity.TntSpread;
++import me.samsuik.sakura.entity.merge.MergeLevel;
++import me.samsuik.sakura.mechanics.MinecraftMechanicsTarget;
++import me.samsuik.sakura.redstone.RedstoneConfiguration;
++import net.kyori.adventure.key.Key;
++import net.kyori.adventure.key.KeyPattern;
++import org.jspecify.annotations.NullMarked;
++
++import static me.samsuik.sakura.explosion.durable.DurableMaterialsContainer.*;
++
++@NullMarked
++public final class ConfigurationKeys {
++    public static final ConfigurationKey<MinecraftMechanicsTarget> MECHANICS_TARGET = create("mechanics_target", MinecraftMechanicsTarget.class);
++    public static final ConfigurationKey<SealedDurableMaterialsContainer> DURABLE_MATERIALS = create("durable_materials", SealedDurableMaterialsContainer.class);
++    public static final ConfigurationKey<RedstoneConfiguration> REDSTONE_BEHAVIOUR = create("redstone_behaviour", RedstoneConfiguration.class);
++    public static final ConfigurationKey<Boolean> CONSISTENT_EXPLOSION_RADIUS = create("consistent_explosion_radius", Boolean.class);
++    public static final ConfigurationKey<Integer> LAVA_FLOW_SPEED = create("lava_flow_speed", Integer.class);
++    public static final ConfigurationKey<MergeLevel> MERGE_LEVEL = create("merge_level", MergeLevel.class);
++    public static final ConfigurationKey<TntSpread> TNT_SPREAD = create("tnt_spread", TntSpread.class);
++    public static final ConfigurationKey<Boolean> TNT_FLOWS_IN_WATER = create("tnt_flows_in_water", Boolean.class);
++    public static final ConfigurationKey<Boolean> HEIGHT_PARITY = create("height_parity", Boolean.class);
++    public static final ConfigurationKey<Boolean> FLOATING_POINT_FIX = create("floating_point_fix", Boolean.class);
++    public static final ConfigurationKey<Boolean> BROKEN_PAPER_EXPLOSION_BEHAVIOUR = create("broken_paper_explosion_behaviour", Boolean.class);
++    public static final ConfigurationKey<Integer> HEIGHT_LIMIT = create("height_limit", Integer.class);
++
++    private static <T> ConfigurationKey<T> create(final @KeyPattern.Value String name, final Class<T> clazz) {
++        return new ConfigurationKey<>(Key.key("sakura", name), clazz);
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/configuration/local/Container.java b/src/main/java/me/samsuik/sakura/configuration/local/Container.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..358cd91cf294fc596d5884f0862994c46d51bb65
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/configuration/local/Container.java
+@@ -0,0 +1,14 @@
++package me.samsuik.sakura.configuration.local;
++
++import org.jspecify.annotations.NullMarked;
++
++import java.util.Map;
++
++@NullMarked
++public interface Container<K, V> {
++    Map<K, V> contents();
++
++    Container<K, V> open();
++
++    Container<K, V> seal();
++}
+diff --git a/src/main/java/me/samsuik/sakura/configuration/local/LocalConfigurationAccessor.java b/src/main/java/me/samsuik/sakura/configuration/local/LocalConfigurationAccessor.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..44c3e3211007ae720ab0ae53c10dce13f305ca40
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/configuration/local/LocalConfigurationAccessor.java
+@@ -0,0 +1,83 @@
++package me.samsuik.sakura.configuration.local;
++
++import io.papermc.paper.math.Position;
++import me.samsuik.sakura.configuration.local.ConfigurationContainer.SealedConfigurationContainer;
++import org.bukkit.util.BoundingBox;
++import org.bukkit.util.Vector;
++import org.jspecify.annotations.NullMarked;
++import org.jspecify.annotations.Nullable;
++
++import java.util.List;
++
++/**
++ * An accessor for local configuration containers.
++ */
++@NullMarked
++public interface LocalConfigurationAccessor {
++    default <V> void set(final BoundingBox area, final ConfigurationKey<V> key, final V value) {
++        final ConfigurationContainer container = this.get(area);
++        final ConfigurationContainer newContainer = container != null
++            ? container.open()
++            : new ConfigurationContainer();
++        newContainer.set(key, value);
++        this.set(area, newContainer.seal());
++    }
++
++    default void remove(final BoundingBox area, final ConfigurationKey<?> key) {
++        final ConfigurationContainer container = this.get(area);
++        if (container != null) {
++            final ConfigurationContainer newContainer = container.open();
++            newContainer.remove(key);
++            this.set(area, newContainer.seal());
++        }
++    }
++
++    default <T> @Nullable T get(final BoundingBox area, final ConfigurationKey<T> key) {
++        final ConfigurationContainer container = this.get(area);
++        return container == null ? null : container.get(key);
++    }
++
++    void set(final BoundingBox area, final SealedConfigurationContainer container);
++
++    @Nullable SealedConfigurationContainer remove(final BoundingBox area);
++
++    @Nullable SealedConfigurationContainer get(final BoundingBox area);
++
++    default <T> @Nullable T getValue(final Vector vector, final ConfigurationKey<T> key) {
++        final ConfigurationContainer container = this.getContainer(vector);
++        return container != null ? container.get(key) : null;
++    }
++
++    default <T> @Nullable T getValue(final Position position, final ConfigurationKey<T> key) {
++        final ConfigurationContainer container = this.getContainer(position);
++        return container != null ? container.get(key) : null;
++    }
++
++    default @Nullable ConfigurationContainer getContainer(final Vector vector) {
++        return this.getContainer(vector.getBlockX(), vector.getBlockY(), vector.getBlockZ());
++    }
++
++    default @Nullable ConfigurationContainer getContainer(final Position position) {
++        return this.getContainer(position.blockX(), position.blockY(), position.blockZ());
++    }
++
++    @Nullable ConfigurationContainer getContainer(final int x, final int y, final int z);
++
++    default List<BoundingBox> getAreas(final Vector vector) {
++        return this.getAreas(vector.getBlockX(), vector.getBlockY(), vector.getBlockZ());
++    }
++
++    default List<BoundingBox> getAreas(final Position position) {
++        return this.getAreas(position.blockX(), position.blockY(), position.blockZ());
++    }
++
++    List<BoundingBox> getAreas(final int x, final int y, final int z);
++
++    List<BoundingBox> getAllAreas();
++
++    default void removeAll(final int x, final int y, final int z) {
++        this.getAreas(x, y, z).forEach(this::remove);
++    }
++
++    void removeAll();
++}
+diff --git a/src/main/java/me/samsuik/sakura/entity/CannonEntity.java b/src/main/java/me/samsuik/sakura/entity/CannonEntity.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ceb7bf3262f1287a3a80c3b6c7f03f2afdefab7
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/entity/CannonEntity.java
+@@ -0,0 +1,7 @@
++package me.samsuik.sakura.entity;
++
++public interface CannonEntity {
++    boolean getHeightParity();
++
++    void setHeightParity(final boolean parity);
++}
+diff --git a/src/main/java/me/samsuik/sakura/entity/TntSpread.java b/src/main/java/me/samsuik/sakura/entity/TntSpread.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..4d981741cf8a01e4d76ff577367d580540e9c51e
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/entity/TntSpread.java
+@@ -0,0 +1,7 @@
++package me.samsuik.sakura.entity;
++
++public enum TntSpread {
++    ALL,
++    Y,
++    NONE
++}
+diff --git a/src/main/java/me/samsuik/sakura/entity/merge/MergeLevel.java b/src/main/java/me/samsuik/sakura/entity/merge/MergeLevel.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..593d2354999fe8eda17e3e878129c62cca5dfffb
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/entity/merge/MergeLevel.java
+@@ -0,0 +1,11 @@
++package me.samsuik.sakura.entity.merge;
++
++import org.jspecify.annotations.NullMarked;
++
++@NullMarked
++public enum MergeLevel {
++    NONE,
++    STRICT,
++    LENIENT,
++    SPAWN
++}
+diff --git a/src/main/java/me/samsuik/sakura/event/block/BlockPreDispenseEvent.java b/src/main/java/me/samsuik/sakura/event/block/BlockPreDispenseEvent.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..7990b45b3e5bde5c139332d6944b01dc76c7f42c
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/event/block/BlockPreDispenseEvent.java
+@@ -0,0 +1,39 @@
++package me.samsuik.sakura.event.block;
++
++import org.bukkit.block.Block;
++import org.bukkit.event.HandlerList;
++import org.bukkit.event.block.BlockEvent;
++import org.jetbrains.annotations.Range;
++import org.jspecify.annotations.NullMarked;
++
++/**
++ * @deprecated Conflicting event name. Replaced with {@link DispenserPreTickEvent}
++ */
++@Deprecated(forRemoval = true)
++@NullMarked
++public final class BlockPreDispenseEvent extends BlockEvent {
++    private static final HandlerList HANDLER_LIST = new HandlerList();
++    private int delay;
++
++    public BlockPreDispenseEvent(final Block block, final int delay) {
++        super(block);
++        this.delay = delay;
++    }
++
++    public int getDelay() {
++        return this.delay;
++    }
++
++    public void setDelay(final @Range(from = 1, to = 1200) int delay) {
++        this.delay = delay;
++    }
++
++    @Override
++    public HandlerList getHandlers() {
++        return HANDLER_LIST;
++    }
++
++    public static HandlerList getHandlerList() {
++        return HANDLER_LIST;
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/event/block/DispenserPreTickEvent.java b/src/main/java/me/samsuik/sakura/event/block/DispenserPreTickEvent.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..f000464f992c8f4090f36114820ef5ce806f0a05
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/event/block/DispenserPreTickEvent.java
+@@ -0,0 +1,35 @@
++package me.samsuik.sakura.event.block;
++
++import org.bukkit.block.Block;
++import org.bukkit.event.HandlerList;
++import org.bukkit.event.block.BlockEvent;
++import org.jetbrains.annotations.Range;
++import org.jspecify.annotations.NullMarked;
++
++@NullMarked
++public final class DispenserPreTickEvent extends BlockEvent {
++    private static final HandlerList HANDLER_LIST = new HandlerList();
++    private int delay;
++
++    public DispenserPreTickEvent(final Block block, final int delay) {
++        super(block);
++        this.delay = delay;
++    }
++
++    public int getDelay() {
++        return this.delay;
++    }
++
++    public void setDelay(final @Range(from = 1, to = 1200) int delay) {
++        this.delay = delay;
++    }
++
++    @Override
++    public HandlerList getHandlers() {
++        return HANDLER_LIST;
++    }
++
++    public static HandlerList getHandlerList() {
++        return HANDLER_LIST;
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/event/entity/PreSpawnerTickEvent.java b/src/main/java/me/samsuik/sakura/event/entity/PreSpawnerTickEvent.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..62d94b5e9d6b4a0fb4a48a10bd5b6704778297d2
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/event/entity/PreSpawnerTickEvent.java
+@@ -0,0 +1,41 @@
++package me.samsuik.sakura.event.entity;
++
++import org.bukkit.Location;
++import org.bukkit.event.Cancellable;
++import org.bukkit.event.Event;
++import org.bukkit.event.HandlerList;
++import org.jspecify.annotations.NullMarked;
++
++@NullMarked
++public final class PreSpawnerTickEvent extends Event implements Cancellable {
++    private static final HandlerList HANDLER_LIST = new HandlerList();
++    private boolean cancelled;
++    private final Location location;
++
++    public PreSpawnerTickEvent(final Location location) {
++        this.location = location;
++    }
++
++    public Location getLocation() {
++        return this.location;
++    }
++
++    @Override
++    public boolean isCancelled() {
++        return this.cancelled;
++    }
++
++    @Override
++    public void setCancelled(boolean cancel) {
++        this.cancelled = cancel;
++    }
++
++    @Override
++    public HandlerList getHandlers() {
++        return HANDLER_LIST;
++    }
++
++    public static HandlerList getHandlerList() {
++        return HANDLER_LIST;
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/explosion/durable/DurableMaterial.java b/src/main/java/me/samsuik/sakura/explosion/durable/DurableMaterial.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..9838d9fca4735a6f4d8ec1242bdd34d142f95375
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/explosion/durable/DurableMaterial.java
+@@ -0,0 +1,40 @@
++package me.samsuik.sakura.explosion.durable;
++
++import org.jspecify.annotations.NullMarked;
++import org.spongepowered.configurate.objectmapping.ConfigSerializable;
++
++@NullMarked
++@ConfigSerializable
++public record DurableMaterial(int durability, float resistance, boolean onlyDamagedByTnt) {
++    public DurableMaterial(final int durability, final float resistance) {
++        this(durability, resistance, true);
++    }
++
++    public boolean replaceBlastResistance() {
++        return this.resistance >= 0.0f;
++    }
++
++    public boolean applyDurability() {
++        return this.durability >= 0;
++    }
++
++    public static DurableMaterial durability(final int durability) {
++        return new DurableMaterial(durability, 0.0f);
++    }
++
++    public static DurableMaterial resistance(final float resistance) {
++        return new DurableMaterial(1, resistance);
++    }
++
++    public static DurableMaterial likeSand(final int durability) {
++        return new DurableMaterial(durability, 3.0f);
++    }
++
++    public static DurableMaterial likeCobblestone(final int durability) {
++        return new DurableMaterial(durability, 6.0f);
++    }
++
++    public static DurableMaterial likeEndstone(final int durability) {
++        return new DurableMaterial(durability, 9.0f);
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/explosion/durable/DurableMaterialsContainer.java b/src/main/java/me/samsuik/sakura/explosion/durable/DurableMaterialsContainer.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..6fa6ae6541c48d5da495c6f3d076f12c89ff0bd1
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/explosion/durable/DurableMaterialsContainer.java
+@@ -0,0 +1,123 @@
++package me.samsuik.sakura.explosion.durable;
++
++import com.google.common.base.Preconditions;
++import me.samsuik.sakura.configuration.local.Container;
++import org.bukkit.Material;
++import org.bukkit.block.BlockType;
++import org.jspecify.annotations.NullMarked;
++import org.jspecify.annotations.Nullable;
++
++import java.util.IdentityHashMap;
++import java.util.Map;
++
++/**
++ * A container for durable materials.
++ */
++@NullMarked
++public sealed class DurableMaterialsContainer implements Container<BlockType, DurableMaterial> {
++    private final Map<BlockType, DurableMaterial> materials = new IdentityHashMap<>();
++
++    public static SealedDurableMaterialsContainer sealedContainer(final Object... contents) {
++        if (contents.length % 2 != 0) {
++            throw new IllegalArgumentException("Expected an even number of contents, got " + contents.length);
++        }
++        final Map<BlockType, DurableMaterial> materials = new IdentityHashMap<>();
++        for (int index = 0; index < contents.length; index += 2) {
++            Object key = contents[index];
++            Object value = contents[index + 1];
++            if (key instanceof Material bukkitMaterial) {
++                key = blockTypeFromBukkitMaterial(bukkitMaterial);
++            }
++            if (!(key instanceof BlockType blockType)) {
++                throw new IllegalArgumentException("Key at index " + index + " must be of type BlockType or Material");
++            }
++            if (!(value instanceof DurableMaterial material)) {
++                throw new IllegalArgumentException("Value at index " + (index + 1) + " must be of type DurableMaterial");
++            }
++            materials.put(blockType, material);
++        }
++        return new SealedDurableMaterialsContainer(materials);
++    }
++
++    private DurableMaterialsContainer(final Map<BlockType, DurableMaterial> materials) {
++        this.materials.putAll(materials);
++    }
++
++    public DurableMaterialsContainer() {}
++
++    private static BlockType blockTypeFromBukkitMaterial(final Material bukkitMaterial) {
++        final BlockType blockType = bukkitMaterial.asBlockType();
++        Preconditions.checkNotNull(blockType, "Material " + bukkitMaterial + " is not a block");
++        return blockType;
++    }
++
++    @Deprecated
++    public final @Nullable DurableMaterial set(final Material bukkitMaterial, final DurableMaterial material) {
++        return this.set(blockTypeFromBukkitMaterial(bukkitMaterial), material);
++    }
++
++    @Deprecated
++    public final @Nullable DurableMaterial remove(final Material bukkitMaterial) {
++        return this.remove(blockTypeFromBukkitMaterial(bukkitMaterial));
++    }
++
++    @Deprecated
++    public final @Nullable DurableMaterial get(final Material bukkitMaterial) {
++        return this.get(blockTypeFromBukkitMaterial(bukkitMaterial));
++    }
++
++    public @Nullable DurableMaterial set(final BlockType blockType, final DurableMaterial material) {
++        Preconditions.checkNotNull(material, "Material cannot be null");
++        return this.materials.put(blockType, material);
++    }
++
++    public @Nullable DurableMaterial remove(final BlockType blockType) {
++        return this.materials.remove(blockType);
++    }
++
++    public final @Nullable DurableMaterial get(final BlockType blockType) {
++        return this.materials.get(blockType);
++    }
++
++    public void clear() {
++        this.materials.clear();
++    }
++
++    @Override
++    public final Map<BlockType, DurableMaterial> contents() {
++        return Map.copyOf(this.materials);
++    }
++
++    public final DurableMaterialsContainer open() {
++        return this instanceof SealedDurableMaterialsContainer
++            ? new DurableMaterialsContainer(this.materials)
++            : this;
++    }
++
++    public final SealedDurableMaterialsContainer seal() {
++        return this instanceof SealedDurableMaterialsContainer sealed
++            ? sealed
++            : new SealedDurableMaterialsContainer(this.materials);
++    }
++
++    public static final class SealedDurableMaterialsContainer extends DurableMaterialsContainer {
++        private SealedDurableMaterialsContainer(final Map<BlockType, DurableMaterial> materials) {
++            super(materials);
++        }
++
++        @Override
++        public DurableMaterial set(final BlockType key, final DurableMaterial value) {
++            throw new UnsupportedOperationException("Container is sealed");
++        }
++
++        @Override
++        public DurableMaterial remove(final BlockType key) {
++            throw new UnsupportedOperationException("Container is sealed");
++        }
++
++        @Override
++        public void clear() {
++            throw new UnsupportedOperationException("Container is sealed");
++        }
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/mechanics/MechanicVersion.java b/src/main/java/me/samsuik/sakura/mechanics/MechanicVersion.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..ab88f8fba647691d288d4d78f5133e6dd2d60ebe
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/mechanics/MechanicVersion.java
+@@ -0,0 +1,42 @@
++package me.samsuik.sakura.mechanics;
++
++import org.jspecify.annotations.NullMarked;
++
++/**
++ * All post-1.8 Minecraft versions with changes to cannon mechanics.
++ * <p>
++ * Versions are encoded as shorts see {@link MinecraftVersionEncoding}.
++ */
++@NullMarked
++public final class MechanicVersion {
++    public static final short LATEST = Short.MAX_VALUE;
++    public static final short LEGACY = Short.MIN_VALUE;
++    public static final short v1_8_2 = MinecraftVersionEncoding.v1xy(8, 2);
++    public static final short v1_9 = MinecraftVersionEncoding.v1xy(9, 0);
++    public static final short v1_10 = MinecraftVersionEncoding.v1xy(10, 0);
++    public static final short v1_11 = MinecraftVersionEncoding.v1xy(11, 0);
++    public static final short v1_12 = MinecraftVersionEncoding.v1xy(12, 0);
++    public static final short v1_13 = MinecraftVersionEncoding.v1xy(13, 0);
++    public static final short v1_14 = MinecraftVersionEncoding.v1xy(14, 0);
++    public static final short v1_16 = MinecraftVersionEncoding.v1xy(16, 0);
++    public static final short v1_17 = MinecraftVersionEncoding.v1xy(17, 0);
++    public static final short v1_18_2 = MinecraftVersionEncoding.v1xy(18, 2);
++    public static final short v1_19_3 = MinecraftVersionEncoding.v1xy(19, 3);
++    public static final short v1_20 = MinecraftVersionEncoding.v1xy(20, 0);
++    public static final short v1_20_2 = MinecraftVersionEncoding.v1xy(20, 2);
++    public static final short v1_21_2 = MinecraftVersionEncoding.v1xy(21, 2);
++    public static final short v1_21_5 = MinecraftVersionEncoding.v1xy(21, 5);
++    public static final short v1_21_6 = MinecraftVersionEncoding.v1xy(21, 6);
++    public static final short v1_21_9 = MinecraftVersionEncoding.v1xy(21, 9);
++    public static final short v1_21_10 = MinecraftVersionEncoding.v1xy(21, 10);
++    public static final short v1_21_11 = MinecraftVersionEncoding.v1xy(21, 11);
++    public static final short v26_2 = MinecraftVersionEncoding.encode(26, 2, 0);
++
++    public static String name(final short mechanicVersion) {
++        return switch (mechanicVersion) {
++            case MechanicVersion.LATEST -> "latest";
++            case MechanicVersion.LEGACY -> "legacy";
++            default -> MinecraftVersionEncoding.asString(mechanicVersion);
++        };
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/mechanics/MinecraftMechanicsTarget.java b/src/main/java/me/samsuik/sakura/mechanics/MinecraftMechanicsTarget.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..30b81675c8b7ad9e6c8373f29bb530efe8109ebe
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/mechanics/MinecraftMechanicsTarget.java
+@@ -0,0 +1,158 @@
++package me.samsuik.sakura.mechanics;
++
++import org.jspecify.annotations.NullMarked;
++
++import java.util.Locale;
++
++/**
++ * The targeted Minecraft version and server type for cannon mechanics.
++ */
++@NullMarked
++public record MinecraftMechanicsTarget(short mechanicVersion, byte serverType, short properties) {
++    private static final MinecraftMechanicsTarget LATEST = new MinecraftMechanicsTarget(MechanicVersion.LATEST, ServerType.PAPER);
++    private static final MinecraftMechanicsTarget LEGACY = new MinecraftMechanicsTarget(MechanicVersion.v1_8_2, ServerType.PAPER);
++
++    public MinecraftMechanicsTarget(final short mechanicVersion, final byte serverType) {
++        this(mechanicVersion, serverType, (short) 0);
++    }
++
++    public boolean isServerType(final byte type) {
++        return this.serverType == type;
++    }
++
++    public boolean hasProperties(final short properties) {
++        return (this.properties & properties) == properties;
++    }
++
++    public boolean is(final short version) {
++        return this.mechanicVersion == version;
++    }
++
++    public boolean before(final short version) {
++        return this.mechanicVersion < version;
++    }
++
++    public boolean after(final short version) {
++        return this.mechanicVersion > version;
++    }
++
++    public boolean atLeast(final short version) {
++        return this.mechanicVersion >= version;
++    }
++
++    public boolean atMost(final short version) {
++        return this.mechanicVersion <= version;
++    }
++
++    public boolean between(final short minVersion, final short maxVersion) {
++        return this.mechanicVersion >= minVersion && this.mechanicVersion < maxVersion;
++    }
++
++    public boolean betweenInclusive(final short minVersion, final short maxVersion) {
++        return this.mechanicVersion >= minVersion && this.mechanicVersion <= maxVersion;
++    }
++
++    public boolean isLegacy() {
++        return this.mechanicVersion == MechanicVersion.LEGACY;
++    }
++
++    public boolean isSnapshot() {
++        return MinecraftVersionEncoding.isSnapshot(this.mechanicVersion);
++    }
++
++    public boolean isVanilla() {
++        return this.serverType == ServerType.VANILLA;
++    }
++
++    public boolean isPaperOrDerivative() {
++        return this.serverType == ServerType.PAPER || this.serverType == ServerType.SAKE;
++    }
++
++    public String mechanicVersionName() {
++        return MechanicVersion.name(this.mechanicVersion);
++    }
++
++    public String serverTypeName() {
++        return ServerType.name(this.serverType);
++    }
++
++    public String serverTypeAndProperties() {
++        String serverTypeAndProperties = this.serverTypeName();
++        if (this.properties > 0) {
++            serverTypeAndProperties += "." + this.properties;
++        }
++
++        return serverTypeAndProperties;
++    }
++
++    public static MinecraftMechanicsTarget latest() {
++        return LATEST;
++    }
++
++    public static MinecraftMechanicsTarget legacy() {
++        return LEGACY;
++    }
++
++    public static MinecraftMechanicsTarget vanilla(final short mechanicVersion) {
++        return new MinecraftMechanicsTarget(mechanicVersion, ServerType.VANILLA);
++    }
++
++    public static MinecraftMechanicsTarget spigot(final short mechanicVersion) {
++        return new MinecraftMechanicsTarget(mechanicVersion, ServerType.SPIGOT);
++    }
++
++    public static MinecraftMechanicsTarget paper(final short mechanicVersion) {
++        return new MinecraftMechanicsTarget(mechanicVersion, ServerType.PAPER);
++    }
++
++    public static MinecraftMechanicsTarget sake(final short mechanicVersion) {
++        return new MinecraftMechanicsTarget(mechanicVersion, ServerType.SAKE);
++    }
++
++    public static MinecraftMechanicsTarget fromString(final String target) throws NumberFormatException {
++        final String[] parts = target.split("\\+");
++        if (parts.length == 0) {
++            throw new IllegalArgumentException("Could not create a mechanics target from (" + target + ")");
++        }
++
++        final String version = parts[0];
++        final short mechanicVersion = switch (version) {
++            case "latest" -> MechanicVersion.LATEST;
++            case "legacy" -> MechanicVersion.LEGACY;
++            default -> MinecraftVersionEncoding.fromString(version);
++        };
++
++        final String remainingPart = parts.length == 2 ? parts[1] : "";
++        final String[] serverAndPropertyParts = remainingPart.split("\\.");
++        final String serverPart = serverAndPropertyParts.length == 2
++            ? serverAndPropertyParts[0]
++            : remainingPart;
++
++        final byte serverType = switch (serverPart.toLowerCase(Locale.ENGLISH)) {
++            case "vanilla" -> ServerType.VANILLA;
++            case "spigot"  -> ServerType.SPIGOT;
++            case "sake"    -> ServerType.SAKE;
++            default        -> ServerType.PAPER;
++        };
++
++        final short properties = serverAndPropertyParts.length == 2
++            ? Short.parseShort(serverAndPropertyParts[1])
++            : 0;
++
++        return new MinecraftMechanicsTarget(mechanicVersion, serverType, properties);
++    }
++
++    @Override
++    public String toString() {
++        final StringBuilder builder = new StringBuilder()
++            .append(MechanicVersion.name(this.mechanicVersion))
++            .append("+")
++            .append(ServerType.name(this.serverType));
++
++        if (this.properties > 0) {
++            builder.append(".").append(this.properties);
++        }
++
++        return builder.toString();
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/mechanics/MinecraftVersionEncoding.java b/src/main/java/me/samsuik/sakura/mechanics/MinecraftVersionEncoding.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..0d5eab3627434798a53ad1234a096ad21fba3fc8
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/mechanics/MinecraftVersionEncoding.java
+@@ -0,0 +1,200 @@
++package me.samsuik.sakura.mechanics;
++
++/**
++ * Encode Minecraft versions into a short.
++ * <p>
++ * <p> Format: [significant][major][snapshot][minor]
++ * <p> - 4 significant bits (1, 26 -> 40)
++ * <p> - 5 major bits       (0 -> 31)
++ * <p> - 1 snapshot bit
++ * <p> - 6 minor bits       (0 -> 63)
++ * <b>
++ * <p>The legacy snapshot format [year]w[week][numeral] is unsupported. This would require mappings to
++ * map legacy snapshots to a target release to be used with the modern snapshot format.
++ */
++public final class MinecraftVersionEncoding {
++    private static final int SIGNIFICANT_BITS = 4;
++    private static final int MAJOR_BITS = 5;
++    private static final int MINOR_BITS = 6;
++
++    private static final int SIGNIFICANT_SHIFT = Short.SIZE - SIGNIFICANT_BITS;
++    private static final int MAJOR_SHIFT       = SIGNIFICANT_SHIFT - MAJOR_BITS;
++    private static final int MINOR_SHIFT       = MAJOR_SHIFT - 1 - MINOR_BITS;
++
++    private static final int MAJOR_MASK = (1 << MAJOR_BITS) - 1;
++    private static final int MINOR_MASK = (1 << MINOR_BITS) - 1;
++
++    private static final int LEGACY_VERSION = 1;
++    private static final int MODERN_VERSION_START = 26;
++    private static final int SNAPSHOT_BIT = 1 << (MAJOR_SHIFT - 1);
++
++    private static final String SNAPSHOT_TELLTALE = "-snapshot-";
++    private static final String SNAPSHOT_FORMAT = "%s.%s-snapshot-%s";
++    private static final String TRADITIONAL_FORMAT = "%s.%s.%s";
++
++    private static short packedSignificantBits(final int version) {
++        if (version == LEGACY_VERSION) {
++            return 0;
++        }
++        return (short) (version - MODERN_VERSION_START + 1);
++    }
++
++    private static short unpackedSignificantBits(final int version) {
++        if (version == 0) {
++            return LEGACY_VERSION;
++        }
++        return (short) (version + MODERN_VERSION_START - 1);
++    }
++
++    /**
++     * Encodes a Minecraft snapshot version into a short.
++     *
++     * @param year  the year
++     * @param drop  the game drop
++     * @param patch the patch
++     * @return the encoded snapshot version as a short
++     */
++    public static short snapshot(final int year, final int drop, final int patch) {
++        short encoded = encode(year, drop, patch);
++        encoded |= SNAPSHOT_BIT;
++        return encoded;
++    }
++
++    /**
++     * Encodes a legacy 1.x.y Minecraft version into a short.
++     *
++     * @param major the major version (x)
++     * @param minor the minor version (y)
++     * @return the encoded version as a short
++     */
++    public static short v1xy(final int major, final int minor) {
++        return encode(1, major, minor);
++    }
++
++    /**
++     * Encodes a Minecraft version into a short.
++     *
++     * @param significant the significant version
++     * @param major       the major version
++     * @param minor       the minor version
++     * @return the encoded version as a short
++     */
++    public static short encode(final int significant, final int major, final int minor) {
++        short encoded = 0;
++        encoded |= (short) (packedSignificantBits(significant) << SIGNIFICANT_SHIFT);
++        encoded |= (short) ((major & MAJOR_MASK) << MAJOR_SHIFT);
++        encoded |= (short) ((minor & MINOR_MASK) << MINOR_SHIFT);
++        return encoded;
++    }
++
++    /**
++     * Whether an encoded version is a Minecraft snapshot.
++     *
++     * @param version the encoded version
++     * @return if the version is a snapshot
++     */
++    public static boolean isSnapshot(final short version) {
++        return (version & SNAPSHOT_BIT) != 0;
++    }
++
++    /**
++     * Decodes the significant version from an encoded version.
++     *
++     * @param version the encoded version
++     * @return the significant version
++     */
++    public static int significant(final short version) {
++        return unpackedSignificantBits(Short.toUnsignedInt(version) >>> SIGNIFICANT_SHIFT);
++    }
++
++    /**
++     * Decodes the major version from an encoded version.
++     *
++     * @param version the encoded version
++     * @return the major version
++     */
++    public static int major(final short version) {
++        return (version >>> MAJOR_SHIFT) & MAJOR_MASK;
++    }
++
++    /**
++     * Decodes the minor version from an encoded version.
++     *
++     * @param version the encoded version
++     * @return the minor version
++     */
++    public static int minor(final short version) {
++        return (version >>> MINOR_SHIFT) & MINOR_MASK;
++    }
++
++    /**
++     * Creates a Minecraft version string from an encoded version.
++     *
++     * @param version the encoded version
++     * @return a string representation
++     */
++    public static String asString(final short version) {
++        final int significant = significant(version);
++        final int major = major(version);
++        final int minor = minor(version);
++        return appropriateFormat(version).formatted(significant, major, minor);
++    }
++
++    /**
++     * Converts a Minecraft version string to an encoded version.
++     *
++     * @param version the minecraft version string
++     * @return an encoded version
++     * @throws NumberFormatException if the version string is invalid
++     */
++    public static short fromString(final String version) throws NumberFormatException {
++        if (version.contains("w")) {
++            throw new UnsupportedOperationException("Legacy snapshots are unsupported");
++        }
++
++        // modern snapshot ex: 28.1-snapshot-14
++        if (version.contains(SNAPSHOT_TELLTALE)) {
++            return versionFromMCSnapshot(version);
++        }
++
++        return versionFromMCVersion(version);
++    }
++
++    private static short versionFromMCVersion(final String version) throws NumberFormatException {
++        // 1.21.8 1.8.8 26.3.1
++        final String[] versionParts = version.split("\\.");
++        if (versionParts.length < 2) {
++            return 0;
++        }
++
++        final int first  = Integer.parseInt(versionParts[0]);
++        final int second = Integer.parseInt(versionParts[1]);
++        if (versionParts.length == 3) {
++            final int third = Integer.parseInt(versionParts[2]);
++            return encode(first, second, third);
++        } else if (first == 1) {
++            return v1xy(second, 0);
++        } else if (first < 26) {
++            return v1xy(first, second);
++        } else {
++            return encode(first, second, 0);
++        }
++    }
++
++    private static short versionFromMCSnapshot(final String version) throws NumberFormatException {
++        final String[] parts = version.split(SNAPSHOT_TELLTALE);
++        final String[] yearDrop = parts[0].split("\\.");
++        if (yearDrop.length != 2) {
++            return 0;
++        }
++
++        final int year = Integer.parseInt(yearDrop[0]);
++        final int drop = Integer.parseInt(yearDrop[1]);
++        final int patch = Integer.parseInt(parts[1]);
++        return MinecraftVersionEncoding.snapshot(year, drop, patch);
++    }
++
++    private static String appropriateFormat(final short version) {
++        return isSnapshot(version) ? SNAPSHOT_FORMAT : TRADITIONAL_FORMAT;
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/mechanics/ServerProperties.java b/src/main/java/me/samsuik/sakura/mechanics/ServerProperties.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..11c36aa791f1b24577609e43ac310fc5b0059d4f
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/mechanics/ServerProperties.java
+@@ -0,0 +1,11 @@
++package me.samsuik.sakura.mechanics;
++
++import org.jspecify.annotations.NullMarked;
++
++/**
++ * Properties for mechanics that can be configured by a specific type of server software.
++ */
++@NullMarked
++public final class ServerProperties {
++    public static short SINGLE_RAY_CAST = 0b1;
++}
+diff --git a/src/main/java/me/samsuik/sakura/mechanics/ServerType.java b/src/main/java/me/samsuik/sakura/mechanics/ServerType.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..02483311b99b22dbb237a40841ee70a66270c335
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/mechanics/ServerType.java
+@@ -0,0 +1,24 @@
++package me.samsuik.sakura.mechanics;
++
++import org.jspecify.annotations.NullMarked;
++
++/**
++ * Types of server software that have different cannon mechanics.
++ */
++@NullMarked
++public final class ServerType {
++    public static final byte VANILLA = 0;
++    public static final byte SPIGOT = 1;
++    public static final byte PAPER = 2;
++    public static final byte SAKE = 32;
++
++    public static String name(final byte serverType) {
++        return switch (serverType) {
++            case 0 -> "vanilla";
++            case 1 -> "spigot";
++            case 2 -> "paper";
++            case 32 -> "sake";
++            default -> "unknown";
++        };
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/player/visibility/VisibilitySettings.java b/src/main/java/me/samsuik/sakura/player/visibility/VisibilitySettings.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..65e3d7731a2bd71290d5f23806eff6841cb2987c
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/player/visibility/VisibilitySettings.java
+@@ -0,0 +1,50 @@
++package me.samsuik.sakura.player.visibility;
++
++import org.jspecify.annotations.NullMarked;
++
++@NullMarked
++public interface VisibilitySettings {
++    default boolean isEnabled(final VisibilityType type) {
++        return this.get(type) == VisibilityState.ON;
++    }
++
++    default boolean isDisabled(final VisibilityType type) {
++        return this.get(type) == VisibilityState.OFF;
++    }
++
++    default boolean isToggled(final VisibilityType type) {
++        return !type.isDefault(this.get(type));
++    }
++
++    default VisibilityState toggle(final VisibilityType type) {
++        final VisibilityState state = this.get(type);
++        return this.set(type, toggleState(state));
++    }
++
++    default VisibilityState cycle(final VisibilityType type) {
++        final VisibilityState state = this.get(type);
++        return this.set(type, type.cycle(state));
++    }
++
++    default void toggleAll() {
++        final VisibilityState state = this.currentState();
++        final VisibilityState newState = toggleState(state);
++        for (final VisibilityType type : VisibilityTypes.types()) {
++            this.set(type, newState);
++        }
++    }
++
++    VisibilityState get(final VisibilityType type);
++
++    VisibilityState set(final VisibilityType type, final VisibilityState state);
++
++    VisibilityState currentState();
++
++    boolean playerModified();
++
++    static VisibilityState toggleState(final VisibilityState state) {
++        return state != VisibilityState.OFF
++            ? VisibilityState.OFF
++            : VisibilityState.ON;
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/player/visibility/VisibilityState.java b/src/main/java/me/samsuik/sakura/player/visibility/VisibilityState.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..270e8c30ed9db2253dbc9978c861daaf695e2733
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/player/visibility/VisibilityState.java
+@@ -0,0 +1,8 @@
++package me.samsuik.sakura.player.visibility;
++
++/**
++ * The visibility state of a {@link VisibilityType}.
++ */
++public enum VisibilityState {
++    ON, MODIFIED, MINIMAL, OFF;
++}
+diff --git a/src/main/java/me/samsuik/sakura/player/visibility/VisibilityType.java b/src/main/java/me/samsuik/sakura/player/visibility/VisibilityType.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..d5ac4c93c242f36740c70c6f5dc5a7d11bb4380e
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/player/visibility/VisibilityType.java
+@@ -0,0 +1,35 @@
++package me.samsuik.sakura.player.visibility;
++
++import com.google.common.collect.ImmutableList;
++import org.jspecify.annotations.NullMarked;
++
++@NullMarked
++public record VisibilityType(String key, ImmutableList<VisibilityState> states) {
++    public VisibilityState getDefault() {
++        return this.states.getFirst();
++    }
++
++    public boolean isDefault(final VisibilityState state) {
++        return state == this.getDefault();
++    }
++
++    public VisibilityState cycle(final VisibilityState state) {
++        final int index = this.states.indexOf(state);
++        final int next = (index + 1) % this.states.size();
++        return this.states.get(next);
++    }
++
++    public static VisibilityType from(final String key, final boolean minimal) {
++        return new VisibilityType(key, states(minimal));
++    }
++
++    private static ImmutableList<VisibilityState> states(final boolean minimal) {
++        final ImmutableList.Builder<VisibilityState> states = ImmutableList.builder();
++        states.add(VisibilityState.ON);
++        if (minimal) {
++            states.add(VisibilityState.MINIMAL);
++        }
++        states.add(VisibilityState.OFF);
++        return states.build();
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/player/visibility/VisibilityTypes.java b/src/main/java/me/samsuik/sakura/player/visibility/VisibilityTypes.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..f0e3d364ef912a71d85b34e3ffa590db38e4b08e
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/player/visibility/VisibilityTypes.java
+@@ -0,0 +1,30 @@
++package me.samsuik.sakura.player.visibility;
++
++import com.google.common.collect.ImmutableList;
++import org.jspecify.annotations.NullMarked;
++
++import java.util.ArrayList;
++import java.util.List;
++
++@NullMarked
++public final class VisibilityTypes {
++    private static final List<VisibilityType> TYPES = new ArrayList<>();
++
++    public static final VisibilityType TNT = create("tnt", true);
++    public static final VisibilityType WIND_CHARGE = create("wind_charge", true);
++    public static final VisibilityType SULFUR_CUBE = create("sulfur_cube", true);
++    public static final VisibilityType SAND = create("sand", true);
++    public static final VisibilityType EXPLOSIONS = create("explosions", true);
++    public static final VisibilityType SPAWNERS = create("spawners", false);
++    public static final VisibilityType PISTONS = create("pistons", false);
++
++    public static ImmutableList<VisibilityType> types() {
++        return ImmutableList.copyOf(TYPES);
++    }
++
++    private static VisibilityType create(final String key, final boolean minimal) {
++        final VisibilityType newVisibilityType = VisibilityType.from(key, minimal);
++        TYPES.add(newVisibilityType);
++        return newVisibilityType;
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/redstone/RedstoneConfiguration.java b/src/main/java/me/samsuik/sakura/redstone/RedstoneConfiguration.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..2b96eedc46ca70d95ba91b36d00411ce2058b5af
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/redstone/RedstoneConfiguration.java
+@@ -0,0 +1,25 @@
++package me.samsuik.sakura.redstone;
++
++import org.jspecify.annotations.NullMarked;
++
++/**
++ * Configuration for redstone behaviour
++ *
++ * @param implementation the redstone implementation to use
++ * @param cache          whether to cache redstone calculations
++ */
++@NullMarked
++public record RedstoneConfiguration(RedstoneImplementation implementation, boolean cache) {
++    @Deprecated(forRemoval = true)
++    public static RedstoneConfiguration withImplementation(final RedstoneImplementation implementation) {
++        return withoutCache(implementation);
++    }
++
++    public static RedstoneConfiguration withoutCache(final RedstoneImplementation implementation) {
++        return new RedstoneConfiguration(implementation, false);
++    }
++
++    public static RedstoneConfiguration withCache(final RedstoneImplementation implementation) {
++        return new RedstoneConfiguration(implementation, true);
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/redstone/RedstoneImplementation.java b/src/main/java/me/samsuik/sakura/redstone/RedstoneImplementation.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..c9b7281308f5f9ca84a028bae77e640fbf8e56c3
+--- /dev/null
++++ b/src/main/java/me/samsuik/sakura/redstone/RedstoneImplementation.java
+@@ -0,0 +1,23 @@
++package me.samsuik.sakura.redstone;
++
++import org.jspecify.annotations.NullMarked;
++
++/**
++ * The redstone implementation to use.
++ */
++@NullMarked
++public enum RedstoneImplementation {
++    VANILLA("vanilla"),
++    EIGENCRAFT("eigencraft"),
++    ALTERNATE_CURRENT("alternate-current");
++
++    private final String friendlyName;
++
++    RedstoneImplementation(final String friendlyName) {
++        this.friendlyName = friendlyName;
++    }
++
++    public final String getFriendlyName() {
++        return this.friendlyName;
++    }
++}

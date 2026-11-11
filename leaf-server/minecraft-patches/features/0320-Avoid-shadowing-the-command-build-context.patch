@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 07:59:32 -0500
+Subject: [PATCH] Avoid shadowing the command build context
+
+
+diff --git a/net/minecraft/commands/Commands.java b/net/minecraft/commands/Commands.java
+index 29da49624aef545149db51b441bc64269c668a53..b015e572461288316bf162eb77c8f09f5c026b5f 100644
+--- a/net/minecraft/commands/Commands.java
++++ b/net/minecraft/commands/Commands.java
+@@ -202,9 +202,9 @@ public class Commands {
+         this.dispatcher.register(
+             literal("maintenance")
+                 .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+-                .executes(context -> {
++                .executes(commandContext -> {
+                     final boolean enabled = me.fuji.maintenance.Maintenance.toggle();
+-                    context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
++                    commandContext.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
+                         "Maintenance mode " + (enabled ? "enabled" : "disabled") + "."), true);
+                     return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                 })

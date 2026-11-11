@@ -1,0 +1,96 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 07:57:18 -0500
+Subject: [PATCH] Restore opt-in Fuji legacy knockback
+
+
+diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
+index 1a19634fc4de5ab328ade736df68de1dc1cf0f33..f6e8e62d9fa7c9a1836c69d73b55cbbd0038f6e9 100644
+--- a/net/minecraft/world/entity/LivingEntity.java
++++ b/net/minecraft/world/entity/LivingEntity.java
+@@ -1735,19 +1735,16 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+             zd = Math.random() - Math.random();
+         }
+         // Paper end - Check distance in entity interactions
+-        // Sakura start - configure entity knockback
+-        this.knockback(
+-            (float) this.level().sakuraConfig().players.knockback.baseKnockback,
+-            xd,
+-            zd,
+-            source,
+-            damage,
+-            source.getDirectEntity(), // CraftBukkit
+-            source.getDirectEntity() == null
+-                ? io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.DAMAGE
+-                : io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.ENTITY_ATTACK // Paper - knockback events
+-        );
+-        // Sakura end - configure entity knockback
++        final Entity attacker = source.getDirectEntity();
++        final io.papermc.paper.event.entity.EntityKnockbackEvent.Cause knockbackCause = attacker == null
++            ? io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.DAMAGE
++            : io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.ENTITY_ATTACK;
++        final var knockback = this.level().sakuraConfig().players.knockback;
++        if (knockback.legacy.enabled) {
++            this.fuji$applyLegacyKnockback(xd, zd, attacker, knockbackCause);
++        } else {
++            this.knockback((float) knockback.baseKnockback, xd, zd, source, damage, attacker, knockbackCause);
++        }
+         if (!blocked) {
+             this.indicateDamage(xd, zd);
+         }
+@@ -2311,6 +2308,55 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+         // Paper end - knockback events
+     }
+ 
++    // Fuji start - legacy (1.8-style) friction/air knockback model (clean-room)
++    private void fuji$applyLegacyKnockback(double x, double z, @Nullable Entity attacker, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause eventCause) {
++        if (!canKnockback(attacker, this)) return;
++        final var cfg = this.level().sakuraConfig().players.knockback.legacy;
++        final double resistance = this.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
++        if (cfg.probabilisticResistance && this.random.nextDouble() < resistance) {
++            return; // 1.8-style: a chance to fully resist
++        }
++        final double strength = 1.0 - resistance;
++
++        while (x * x + z * z < 1.0E-4) {
++            x = (this.random.nextDouble() - this.random.nextDouble()) * 0.01;
++            z = (this.random.nextDouble() - this.random.nextDouble()) * 0.01;
++        }
++        final double power = Math.sqrt(x * x + z * z);
++        final Vec3 original = this.getDeltaMovement();
++        final boolean onGround = this.onGround();
++
++        final double hMod = cfg.horizontalModifier * (onGround ? 1.0 : cfg.horizontalAirModifier);
++        final double vMod = cfg.verticalModifier * (onGround ? 1.0 : cfg.verticalAirModifier);
++
++        double cx = original.x / cfg.frictionHorizontal - x / power * hMod;
++        double cy = original.y / cfg.frictionVertical + vMod;
++        double cz = original.z / cfg.frictionHorizontal - z / power * hMod;
++
++        cx *= strength; cy *= strength; cz *= strength;
++        if (attacker != null && attacker.isSprinting()) {
++            cx *= cfg.sprintingHorizontalModifier;
++            cy *= cfg.sprintingVerticalModifier;
++            cz *= cfg.sprintingHorizontalModifier;
++        }
++        if (!cfg.probabilisticResistance) {
++            cx *= strength; cy *= strength; cz *= strength;
++        }
++        if (cy > cfg.verticalMax) {
++            cy = cfg.verticalMax;
++        }
++
++        final Vec3 finalVelocity = new Vec3(cx, cy, cz);
++        final Vec3 diff = finalVelocity.subtract(original);
++        io.papermc.paper.event.entity.EntityKnockbackEvent event = CraftEventFactory.callEntityKnockbackEvent(this.getBukkitEntity(), attacker, attacker, eventCause, strength, diff);
++        if (event.isCancelled()) {
++            return;
++        }
++        this.needsSync = true;
++        this.setDeltaMovement(original.add(event.getKnockback().getX(), event.getKnockback().getY(), event.getKnockback().getZ()));
++    }
++    // Fuji end - legacy knockback model
++
+     // Leaf start - Configurable player knockback zombie
+     private boolean canKnockback(final @Nullable Entity attacker, final LivingEntity target) {
+         if (!org.dreeam.leaf.config.modules.gameplay.Knockback.canPlayerKnockbackZombie) {

@@ -1,0 +1,92 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 08:08:36 -0500
+Subject: [PATCH] Honor Sakura visibility settings across Leaf entity trackers
+
+
+diff --git a/me/samsuik/sakura/player/visibility/MinimalVisibility.java b/me/samsuik/sakura/player/visibility/MinimalVisibility.java
+index 0bb9d61d0d377eb1057847233f23209bce6bc5b2..7766ed378c8ce0c5abbb320028d187a27f6bd03e 100644
+--- a/me/samsuik/sakura/player/visibility/MinimalVisibility.java
++++ b/me/samsuik/sakura/player/visibility/MinimalVisibility.java
+@@ -19,7 +19,7 @@ public final class MinimalVisibility {
+     private final ObjectOpenHashSet<BlockPos> explosions = new ObjectOpenHashSet<>();
+     private long lastExplosion;
+ 
+-    public boolean filterEntity(final Entity entity) {
++    public synchronized boolean filterEntity(final Entity entity) {
+         final BlockPos blockPos = entity.blockPosition();
+         final long posAndType = blockPos.asLong() ^ entity.getType().hashCode();
+         final Entity visibleEntity = this.minimalEntities.getIfPresent(posAndType);
+diff --git a/me/samsuik/sakura/player/visibility/PlayerVisibilitySettings.java b/me/samsuik/sakura/player/visibility/PlayerVisibilitySettings.java
+index 5239478c397169f82206fcaefb77f71d2d83596d..4f67c54ec1f4484d9a290604d1fa288108bd802d 100644
+--- a/me/samsuik/sakura/player/visibility/PlayerVisibilitySettings.java
++++ b/me/samsuik/sakura/player/visibility/PlayerVisibilitySettings.java
+@@ -12,14 +12,14 @@ public final class PlayerVisibilitySettings implements VisibilitySettings {
+     private final Reference2ObjectMap<VisibilityType, VisibilityState> visibilityStates = new Reference2ObjectOpenHashMap<>();
+ 
+     @Override
+-    public VisibilityState get(final VisibilityType type) {
++    public synchronized VisibilityState get(final VisibilityType type) {
+         final VisibilityState state = this.visibilityStates.get(type);
+         //noinspection ConstantValue
+         return state != null ? state : type.getDefault();
+     }
+ 
+     @Override
+-    public VisibilityState set(final VisibilityType type, final VisibilityState state) {
++    public synchronized VisibilityState set(final VisibilityType type, final VisibilityState state) {
+         if (type.isDefault(state)) {
+             this.visibilityStates.remove(type);
+         } else {
+@@ -29,7 +29,7 @@ public final class PlayerVisibilitySettings implements VisibilitySettings {
+     }
+ 
+     @Override
+-    public VisibilityState currentState() {
++    public synchronized VisibilityState currentState() {
+         final int modifiedCount = this.visibilityStates.size();
+         if (modifiedCount == 0) {
+             return VisibilityState.ON;
+@@ -41,11 +41,11 @@ public final class PlayerVisibilitySettings implements VisibilitySettings {
+     }
+ 
+     @Override
+-    public boolean playerModified() {
++    public synchronized boolean playerModified() {
+         return !this.visibilityStates.isEmpty();
+     }
+ 
+-    public void loadData(final ValueInput input) {
++    public synchronized void loadData(final ValueInput input) {
+         input.child(VISIBILITY_SETTINGS_TAG).ifPresent(settings -> {
+             for (final VisibilityType type : VisibilityTypes.types()) {
+                 final String typeKey = type.key();
+@@ -55,7 +55,7 @@ public final class PlayerVisibilitySettings implements VisibilitySettings {
+         });
+     }
+ 
+-    public void saveData(final ValueOutput output) {
++    public synchronized void saveData(final ValueOutput output) {
+         final ValueOutput settings = output.child(VISIBILITY_SETTINGS_TAG);
+         this.visibilityStates.forEach((type, state) -> settings.putString(type.key(), state.name()));
+     }
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index d88af1d2206bb1eeb848e0d95fa11d19d5691827..6d5d400299ac9a10ba8a31f67a6e027b988f985e 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -1638,6 +1638,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                         && ((rangeYSqr == 0.0) || ((dy * dy) <= rangeYSqr))
+                         && this.entity.broadcastToPlayer(player)
+                         && ChunkMap.this.isChunkTracked(player, eChunkX, eChunkZ)
++                        && me.samsuik.sakura.player.visibility.FilterOrModifyPackets.canSendEntityUpdates(this.entity, player, ChunkMap.this.level.minimalVisibility)
+                         && player.getBukkitEntity().canSeeChunkMapUpdatePlayer(this.entity.getBukkitEntity());
+                     if (flag) {
+                         if (!this.seenBy.contains(player.connection)) {
+@@ -1695,6 +1696,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                 }
+                 visibleToPlayer = visibleToPlayer && this.entity.broadcastToPlayer(player) && ChunkMap.this.isChunkTracked(player, this.entity.chunkPosition().x(), this.entity.chunkPosition().z());
+                 // Paper end - Configurable entity tracking range by Y
++                visibleToPlayer = visibleToPlayer && me.samsuik.sakura.player.visibility.FilterOrModifyPackets.canSendEntityUpdates(this.entity, player, ChunkMap.this.level.minimalVisibility);
+                 // CraftBukkit start - respect vanish API
+                 if (visibleToPlayer && !player.getBukkitEntity().canSeeChunkMapUpdatePlayer(this.entity.getBukkitEntity())) { // Paper - only consider hits // SparklyPaper - optimize canSee checks
+                     visibleToPlayer = false;

@@ -1,0 +1,187 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 08:11:08 -0500
+Subject: [PATCH] Port Fuji raytrace culling hooks across all entity tracker
+ paths
+
+
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index 6d5d400299ac9a10ba8a31f67a6e027b988f985e..463665c126bf583956d0feaacb70c4c2cad07e27 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -1534,7 +1534,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                 double distanceSquared = deltaToPlayerX * deltaToPlayerX + deltaToPlayerZ * deltaToPlayerZ; // Paper
+                 double rangeSquared = visibleRange * visibleRange;
+                 // Paper start - Configurable entity tracking range by Y
+-                boolean visibleToPlayer = distanceSquared <= rangeSquared;
++                boolean visibleToPlayer = distanceSquared <= rangeSquared && !this.entity.isCulled(player);
+                 if (visibleToPlayer && level.paperConfig().entities.trackingRangeY.enabled) {
+                     double rangeY = level.paperConfig().entities.trackingRangeY.get(this.entity, -1);
+                     if (rangeY != -1) {
+@@ -1638,6 +1638,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                         && ((rangeYSqr == 0.0) || ((dy * dy) <= rangeYSqr))
+                         && this.entity.broadcastToPlayer(player)
+                         && ChunkMap.this.isChunkTracked(player, eChunkX, eChunkZ)
++                        && !this.entity.isCulled(player)
+                         && me.samsuik.sakura.player.visibility.FilterOrModifyPackets.canSendEntityUpdates(this.entity, player, ChunkMap.this.level.minimalVisibility)
+                         && player.getBukkitEntity().canSeeChunkMapUpdatePlayer(this.entity.getBukkitEntity());
+                     if (flag) {
+@@ -1686,7 +1687,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                 double distanceSquared = deltaToPlayerX * deltaToPlayerX + deltaToPlayerZ * deltaToPlayerZ; // Paper
+                 double rangeSquared = visibleRange * visibleRange;
+                 // Paper start - Configurable entity tracking range by Y
+-                boolean visibleToPlayer = distanceSquared <= rangeSquared;
++                boolean visibleToPlayer = distanceSquared <= rangeSquared && !this.entity.isCulled(player);
+                 if (visibleToPlayer && level.paperConfig().entities.trackingRangeY.enabled) {
+                     double rangeY = level.paperConfig().entities.trackingRangeY.get(this.entity, -1);
+                     if (rangeY != -1) {
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index bc20e14244313046738adecdd6da758e043b7115..788a58b4058ec057df83cbaf087a25769747b21d 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -166,7 +166,7 @@ public abstract class Entity
+     ItemOwner,
+     SlotProvider,
+     DebugValueSource,
+-    TypedInstance<EntityType<?>>, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity, net.caffeinemc.mods.lithium.common.world.in_world_tracking.MaybeInLevelObject { // Paper - rewrite chunk system // Paper - optimise entity tracker // Leaf - Lithium - equipment tracking
++    TypedInstance<EntityType<?>>, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity, net.caffeinemc.mods.lithium.common.world.in_world_tracking.MaybeInLevelObject, dev.tr7zw.entityculling.versionless.access.Cullable { // Paper - rewrite chunk system // Paper - optimise entity tracker // Leaf - Lithium - equipment tracking
+     public static javax.script.ScriptEngine scriptEngine = new javax.script.ScriptEngineManager().getEngineByName("rhino"); // Purpur - Configurable entity base attributes
+     // CraftBukkit start
+     private static final int CURRENT_LEVEL = 2;
+@@ -5918,6 +5918,7 @@ public abstract class Entity
+             return;
+         }
+         // Paper end - rewrite chunk system
++        dev.tr7zw.entityculling.CullTask.onEntityRemoval(this); // Fuji - raytrace entity tracker
+         org.bukkit.craftbukkit.event.CraftEventFactory.callEntityRemoveEvent(this, cause); // CraftBukkit
+         final boolean alreadyRemoved = this.removalReason != null; // Paper - Folia schedulers
+         if (this.removalReason == null) {
+@@ -6291,4 +6292,36 @@ public abstract class Entity
+         return this.distanceToSqr(entity.position());
+     }
+     // Leaf end - Optimize Entity distanceToSqr
++
++    // Leaf start - Raytrace entity tracker
++    private volatile long lastTime = 0;
++
++    @Override
++    public void setTimeout() {
++        this.lastTime = System.currentTimeMillis() + 1000;
++    }
++
++    @Override
++    public boolean isForcedVisible() {
++        return this.lastTime > System.currentTimeMillis();
++    }
++
++    @Override
++    public void setCulled(boolean value, net.minecraft.world.entity.player.Player player) {
++        dev.tr7zw.entityculling.CullTask task = player.cullTask.get();
++        if (task == null) return;
++        task.setCulled(this, value);
++        if (!value) {
++            setTimeout();
++        }
++    }
++
++    @Override
++    public boolean isCulled(net.minecraft.world.entity.player.Player player) {
++        if (!org.dreeam.leaf.config.modules.misc.RaytraceTracker.enabled) return false;
++        dev.tr7zw.entityculling.CullTask task = player.cullTask.get();
++        if (task == null) return false;
++        return task.isEntityCulled(this);
++    }
++    // Leaf end - Raytrace entity tracker
+ }
+diff --git a/net/minecraft/world/entity/EntityType.java b/net/minecraft/world/entity/EntityType.java
+index af7ae155a43f20d48538aa82053f6b9f3781c620..8814807dd84e0cd6767f1c489ed8d8fd44164f1f 100644
+--- a/net/minecraft/world/entity/EntityType.java
++++ b/net/minecraft/world/entity/EntityType.java
+@@ -68,6 +68,7 @@ public class EntityType<T extends Entity> implements EntityTypeTest<Entity, T>,
+     private final int clientTrackingRange;
+     private final int updateInterval;
+     public boolean dabEnabled = false; // Pufferfish
++    public volatile boolean skipRaytraceCheck; // Fuji - raytrace entity tracker
+     private final String descriptionId;
+     private @Nullable Component description;
+     private final Optional<ResourceKey<LootTable>> lootTable;
+diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
+index f555615463b667ddb7b2439600574019ade7bd2e..dff11d909bcd662faaa27f7e7fc72cb500f53e5e 100644
+--- a/net/minecraft/world/entity/player/Player.java
++++ b/net/minecraft/world/entity/player/Player.java
+@@ -124,6 +124,10 @@ import net.minecraft.world.scores.PlayerTeam;
+ import org.jspecify.annotations.Nullable;
+ 
+ public abstract class Player extends Avatar implements ContainerUser {
++    public final java.util.concurrent.atomic.AtomicReference<dev.tr7zw.entityculling.CullTask> cullTask =
++        new java.util.concurrent.atomic.AtomicReference<>();
++    private net.minecraft.world.level.@org.jspecify.annotations.Nullable Level lastCullWorld;
++
+     public static final int MAX_HEALTH = 20;
+     public static final int SLEEP_DURATION = 100;
+     public static final int WAKE_UP_DURATION = 10;
+@@ -305,6 +309,41 @@ public abstract class Player extends Avatar implements ContainerUser {
+         }
+         // Purpur end - Burp delay
+ 
++        // Leaf start - Raytrace Entity Tracker
++        if (this instanceof net.minecraft.server.level.ServerPlayer) {
++            if (!org.dreeam.leaf.config.modules.misc.RaytraceTracker.enabled) {
++                dev.tr7zw.entityculling.CullTask existing = this.cullTask.get();
++                if (existing != null) {
++                    existing.signalStop();
++                    this.cullTask.set(null);
++                }
++            } else {
++                net.minecraft.world.level.Level currLevel = this.level();
++                dev.tr7zw.entityculling.CullTask current = this.cullTask.get();
++                boolean needsUpdate = current == null || this.lastCullWorld != currLevel;
++
++                if (needsUpdate) {
++                    if (current != null) {
++                        current.signalStop();
++                    }
++                    final com.logisticscraft.occlusionculling.OcclusionCullingInstance culling = new com.logisticscraft.occlusionculling.OcclusionCullingInstance(
++                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.maxTraceDistance,
++                        new dev.tr7zw.entityculling.DefaultChunkDataProvider(currLevel)
++                    );
++                    dev.tr7zw.entityculling.CullTask newTask = new dev.tr7zw.entityculling.CullTask(
++                        culling,
++                        this,
++                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.boundingBoxLimit,
++                        org.dreeam.leaf.config.modules.misc.RaytraceTracker.traceInterval
++                    );
++                    this.cullTask.set(newTask);
++                    this.lastCullWorld = currLevel;
++                    newTask.setup();
++                }
++            }
++        }
++        // Leaf end - Raytrace Entity Tracker
++
+         this.noPhysics = this.isSpectator();
+         if (this.isSpectator() || this.isPassenger()) {
+             this.setOnGround(false);
+@@ -1516,6 +1555,10 @@ public abstract class Player extends Avatar implements ContainerUser {
+         if (this.hasContainerOpen()) {
+             this.doCloseContainer();
+         }
++        final dev.tr7zw.entityculling.CullTask task = this.cullTask.getAndSet(null);
++        if (task != null) {
++            task.signalStop();
++        }
+     }
+ 
+     @Override
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 1afbadbd4a20df2bfcd805b4979d57b66ada4fca..cb685eeab10af14dc66249d4195a7b5239692ae7 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -1206,6 +1206,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+         }
+         // Imanity end - AntiXraySDK integration
+         this.chunkPacketBlockController.onBlockChange(this, pos, blockState, oldState, updateFlags, updateLimit); // Paper - Anti-Xray
++        dev.tr7zw.entityculling.CullTask.onBlockChange(this, pos); // Fuji - raytrace entity tracker
+         if (oldState == null) {
+             // CraftBukkit start - remove blockstate if failed (or the same)
+             if (this.captureBlockStates && captured) {

@@ -1,0 +1,69 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 07:58:49 -0500
+Subject: [PATCH] Restore opt-in Fuji instant falling block stacking
+
+
+diff --git a/net/minecraft/world/entity/item/FallingBlockEntity.java b/net/minecraft/world/entity/item/FallingBlockEntity.java
+index 3920c744718facb7adb48d633fba4acda80e738e..8efbe562bc6257d1f2d3ef6ea58e81838d72f043 100644
+--- a/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -246,6 +246,9 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+             serverLevel.getBlockTicks().clearArea(new net.minecraft.world.level.levelgen.structure.BoundingBox(pos.above()));
+         }
+         // Sakura end - limit instant block falling
++        if (org.dreeam.leaf.config.modules.gameplay.InstantFallingBlocks.enabled && fuji$attemptInstantStack(level, pos, state)) {
++            return entity;
++        }
+         // Sakura start - configure server mechanics
+         if (entity.mechanicsTarget.atLeast(me.samsuik.sakura.mechanics.MechanicVersion.v1_18_2)) {
+             level.setBlockAndUpdate(pos, state.getFluidState().createLegacyBlock());
+@@ -255,6 +258,48 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+         return entity;
+     }
+ 
++    private static boolean fuji$attemptInstantStack(final Level level, final BlockPos origin, final BlockState state) {
++        if (!(state.getBlock() instanceof FallingBlock)) {
++            return false;
++        }
++
++        final BlockPos.MutableBlockPos cursor = origin.mutable();
++        final net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunk(origin.getX() >> 4, origin.getZ() >> 4);
++        for (int distance = 1; distance <= 20 && cursor.move(0, -1, 0).getY() >= level.getMinY(); distance++) {
++            final BlockState below = chunk.getBlockState(cursor);
++            if (FallingBlock.isFree(below)) {
++                continue;
++            }
++            if (distance == 1 || !below.is(state.getBlock())) {
++                return false;
++            }
++
++            cursor.move(0, 1, 0);
++            if (!level.setBlock(cursor, state, Block.UPDATE_ALL, 2)) {
++                return false;
++            }
++            level.setBlock(origin, state.getFluidState().createLegacyBlock(), Block.UPDATE_ALL, 2);
++
++            final net.minecraft.world.phys.AABB column = new net.minecraft.world.phys.AABB(cursor.getX(), cursor.getY(), cursor.getZ(),
++                origin.getX() + 1, origin.getY() + 1, origin.getZ() + 1);
++            for (final Entity candidate : level.getEntities((Entity) null, column,
++                entity -> entity instanceof FallingBlockEntity falling && falling.getBlockState().is(state.getBlock()))) {
++                if (cursor.getY() >= origin.getY()) {
++                    break;
++                }
++                cursor.move(0, 1, 0);
++                final FallingBlockEntity falling = (FallingBlockEntity) candidate;
++                if (!FallingBlock.isFree(chunk.getBlockState(cursor))
++                    || !level.setBlock(cursor, falling.getBlockState(), Block.UPDATE_ALL, 2)) {
++                    break;
++                }
++                falling.discard();
++            }
++            return true;
++        }
++        return false;
++    }
++
+     @Override
+     public boolean isAttackable() {
+         return false;

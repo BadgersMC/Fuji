@@ -1,0 +1,113 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 07:56:34 -0500
+Subject: [PATCH] Restore Fuji maintenance command, hurt camera toggle, and
+ roof cannon options
+
+
+diff --git a/net/minecraft/commands/Commands.java b/net/minecraft/commands/Commands.java
+index 54463658e325d5c07d43c85fbad7a8f0e98a54dc..29da49624aef545149db51b441bc64269c668a53 100644
+--- a/net/minecraft/commands/Commands.java
++++ b/net/minecraft/commands/Commands.java
+@@ -197,6 +197,19 @@ public class Commands {
+     }
+     public Commands(final Commands.CommandSelection commandSelection, final CommandBuildContext context, final boolean modern) {
+     // Paper end - Brigadier API - modern minecraft overloads that do not use redirects but are copies instead
++        // Fuji start - maintenance mode
++        me.fuji.maintenance.Maintenance.load();
++        this.dispatcher.register(
++            literal("maintenance")
++                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
++                .executes(context -> {
++                    final boolean enabled = me.fuji.maintenance.Maintenance.toggle();
++                    context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
++                        "Maintenance mode " + (enabled ? "enabled" : "disabled") + "."), true);
++                    return com.mojang.brigadier.Command.SINGLE_SUCCESS;
++                })
++        );
++        // Fuji end - maintenance mode
+         AdvancementCommands.register(this.dispatcher);
+         AttributeCommand.register(this.dispatcher, context);
+         ExecuteCommand.register(this.dispatcher, context);
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 6e53ad935339b90866432808750e575add6b379b..41c8a0e2766a5dee74be14539cd17badf7ed2647 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -3072,6 +3072,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+ 
+     @Override
+     public void indicateDamage(final double xd, final double zd) {
++        if (this.level().sakuraConfig().players.combat.disableHurtCameraShake) {
++            return;
++        }
+         this.hurtDir = (float)(Mth.atan2(zd, xd) * 180.0F / (float)Math.PI - this.getYRot());
+         this.connection.send(new ClientboundHurtAnimationPacket(this));
+     }
+diff --git a/net/minecraft/world/entity/item/FallingBlockEntity.java b/net/minecraft/world/entity/item/FallingBlockEntity.java
+index 06191be83d856810c131f25eac550ca49d63691f..3920c744718facb7adb48d633fba4acda80e738e 100644
+--- a/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -80,6 +80,7 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+     public boolean heightParity;
+     public boolean floatingPointFix;
+     public int heightLimit;
++    private boolean fuji$usesPaperHeightLimit;
+ 
+     @Override
+     public double getEyeY() {
+@@ -120,7 +121,8 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+ 
+         this.floatingPointFix = config.floatingPointFix;
+         this.heightLimit = config.heightLimit;
+-        if (this.heightLimit == Integer.MIN_VALUE) {
++        this.fuji$usesPaperHeightLimit = this.heightLimit == Integer.MIN_VALUE;
++        if (this.fuji$usesPaperHeightLimit) {
+             this.heightLimit = this.level().paperConfig().fixes.fallingBlockHeightNerf.or(Integer.MIN_VALUE);
+         }
+ 
+@@ -319,7 +321,10 @@ public class FallingBlockEntity extends Entity implements me.samsuik.sakura.enti
+             }
+             // Sakura end - configure server mechanics
+             // Paper start - Configurable falling blocks height nerf
+-            if (this.heightLimit != Integer.MIN_VALUE && this.getY() > this.heightLimit) { // Sakura - configure cannon mechanics
++            if (this.heightLimit != Integer.MIN_VALUE && this.getY() > this.heightLimit
++                && (!this.fuji$usesPaperHeightLimit
++                    || !org.dreeam.leaf.config.modules.gameplay.CannonHeightNerf.fallingBlockOnlyWithHorizontalMovement
++                    || this.getDeltaMovement().x != 0.0 || this.getDeltaMovement().z != 0.0)) { // Sakura - configure cannon mechanics
+                 if (this.dropItem && this.level() instanceof final ServerLevel serverLevel && serverLevel.getGameRules().get(GameRules.ENTITY_DROPS)) {
+                     this.spawnAtLocation(serverLevel, block);
+                 }
+diff --git a/net/minecraft/world/entity/item/PrimedTnt.java b/net/minecraft/world/entity/item/PrimedTnt.java
+index 4b7c0f0dd19b68000be756f5ee657366a956352f..d4fa1764bfac5e9077ef12153554b0e134196924 100644
+--- a/net/minecraft/world/entity/item/PrimedTnt.java
++++ b/net/minecraft/world/entity/item/PrimedTnt.java
+@@ -67,6 +67,7 @@ public class PrimedTnt extends Entity implements TraceableEntity, me.samsuik.sak
+ 
+     // Sakura start - configure cannon mechanics
+     public int heightLimit;
++    private boolean fuji$usesPaperHeightLimit;
+ 
+     @Override
+     public final void sakura$addedToWorld() {
+@@ -81,7 +82,8 @@ public class PrimedTnt extends Entity implements TraceableEntity, me.samsuik.sak
+         }
+ 
+         this.heightLimit = config.heightLimit;
+-        if (this.heightLimit == Integer.MIN_VALUE) {
++        this.fuji$usesPaperHeightLimit = this.heightLimit == Integer.MIN_VALUE;
++        if (this.fuji$usesPaperHeightLimit) {
+             this.heightLimit = this.level().paperConfig().fixes.tntEntityHeightNerf.or(Integer.MIN_VALUE);
+         }
+ 
+@@ -216,7 +218,10 @@ public class PrimedTnt extends Entity implements TraceableEntity, me.samsuik.sak
+         }
+         // Sakura end - configure server mechanics
+         // Paper start - Configurable TNT height nerf
+-        if (this.heightLimit != Integer.MIN_VALUE && this.getY() > this.heightLimit) { // Sakura - configure cannon mechanics
++        if (this.heightLimit != Integer.MIN_VALUE && this.getY() > this.heightLimit
++            && (!this.fuji$usesPaperHeightLimit
++                || !org.dreeam.leaf.config.modules.gameplay.CannonHeightNerf.tntOnlyWithHorizontalMovement
++                || this.getDeltaMovement().x != 0.0 || this.getDeltaMovement().z != 0.0)) { // Sakura - configure cannon mechanics
+             this.discard(EntityRemoveEvent.Cause.OUT_OF_WORLD);
+             return;
+         }

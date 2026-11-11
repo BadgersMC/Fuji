@@ -1,0 +1,137 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 08:32:31 -0500
+Subject: [PATCH] Send and optionally flush one melee knockback velocity update
+
+
+diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+index ff4320659f3726ed1280a1bcd0856fe79d48de5f..02a28378d47675adbaa4ced2109c9084cb5f1133 100644
+--- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+@@ -357,6 +357,14 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+     }
+ 
+     public void send(final Packet<?> packet, final @Nullable ChannelFutureListener listener) {
++        this.send(packet, listener, false);
++    }
++
++    public void sendWithImmediateFlush(final Packet<?> packet) {
++        this.send(packet, null, true);
++    }
++
++    private void send(final Packet<?> packet, final @Nullable ChannelFutureListener listener, final boolean forceFlush) {
+         // CraftBukkit start
+         if (packet == null) {
+             return;
+@@ -379,7 +387,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+             this.close();
+         }
+ 
+-        boolean flush = !this.suspendFlushingOnServerThread || !this.server.isSameThread();
++        boolean flush = forceFlush || !this.suspendFlushingOnServerThread || !this.server.isSameThread();
+ 
+         try {
+             this.connection.send(packet, listener, flush);
+diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
+index dff11d909bcd662faaa27f7e7fc72cb500f53e5e..55686b329015c84f4b646ec2ce1f3df29fb8a3b7 100644
+--- a/net/minecraft/world/entity/player/Player.java
++++ b/net/minecraft/world/entity/player/Player.java
+@@ -1399,30 +1399,84 @@ public abstract class Player extends Avatar implements ContainerUser {
+             // Paper end - Configurable sprint interruption on attack
+         }
+ 
+-        if (entity instanceof ServerPlayer serverPlayer && entity.syncVelocity) {
++        if (entity instanceof ServerPlayer victim && entity.syncVelocity) {
+             // CraftBukkit start - Add Velocity Event
+-            boolean cancelled = false;
+-            org.bukkit.entity.Player player = (org.bukkit.entity.Player) entity.getBukkitEntity();
+-            org.bukkit.util.Vector velocity = org.bukkit.craftbukkit.util.CraftVector.toBukkit(oldMovement);
++            final var plugins = this.level().getCraftServer().getPluginManager();
++            final var settings = victim.level().sakuraConfig().players.knockback;
++            final boolean meleePvp = this instanceof ServerPlayer && damageSource.getDirectEntity() == this;
++            final boolean flush = meleePvp && settings.flush;
++            final boolean sync = meleePvp && settings.sync && !plugins.isPluginEnabled("KnockbackSync");
++            final Vec3 currentVelocity = victim.getDeltaMovement();
++            final Vec3 adjustedVelocity = sync ? fuji$syncKnockback(victim, oldMovement, currentVelocity) : currentVelocity;
++            if (adjustedVelocity != currentVelocity) {
++                victim.setDeltaMovement(adjustedVelocity);
++            }
+ 
+-            org.bukkit.event.player.PlayerVelocityEvent event = new org.bukkit.event.player.PlayerVelocityEvent(player, velocity.clone());
+-            this.level().getCraftServer().getPluginManager().callEvent(event);
++            final org.bukkit.util.Vector eventVelocity = org.bukkit.craftbukkit.util.CraftVector.toBukkit(
++                adjustedVelocity != currentVelocity ? adjustedVelocity : oldMovement);
++            final org.bukkit.event.player.PlayerVelocityEvent event =
++                new org.bukkit.event.player.PlayerVelocityEvent(victim.getBukkitEntity(), eventVelocity.clone());
++            plugins.callEvent(event);
+ 
+-            if (event.isCancelled()) {
+-                cancelled = true;
+-            } else if (!velocity.equals(event.getVelocity())) {
+-                player.setVelocity(event.getVelocity());
++            if (!event.isCancelled()) {
++                if (!eventVelocity.equals(event.getVelocity())) {
++                    victim.getBukkitEntity().setVelocity(event.getVelocity());
++                }
++                final ClientboundSetEntityMotionPacket packet = new ClientboundSetEntityMotionPacket(victim);
++                if (flush) {
++                    victim.connection.sendWithImmediateFlush(packet);
++                } else {
++                    victim.connection.send(packet);
++                }
+             }
+ 
+-            if (!cancelled) {
+-            serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(entity));
+-            entity.syncVelocity = false;
+-            entity.setDeltaMovement(oldMovement);
++            // Consume the same velocity update before the entity tracker can send it a second time.
++            if (!event.isCancelled() || sync || flush) {
++                victim.syncVelocity = false;
++                victim.setDeltaMovement(oldMovement);
+             }
+             // CraftBukkit end
+         }
+     }
+ 
++    private static Vec3 fuji$syncKnockback(final ServerPlayer victim, final Vec3 beforeHit, final Vec3 velocity) {
++        final int latency = victim.connection.latency();
++        if (latency < me.fuji.combat.KnockbackSync.MIN_LATENCY_MILLIS || velocity.equals(beforeHit)
++            || victim.onGround() || victim.isFallFlying() || victim.getAbilities().flying || victim.isPassenger()
++            || victim.isNoGravity() || victim.isInWater() || victim.isInLava() || victim.onClimbable()
++            || victim.hasEffect(MobEffects.SLOW_FALLING) || victim.hasEffect(MobEffects.LEVITATION)
++            || victim.getBlockStateOn().is(net.minecraft.world.level.block.Blocks.SCAFFOLDING)
++            || victim.level().getBlockState(victim.blockPosition()).is(net.minecraft.world.level.block.Blocks.COBWEB)) {
++            return velocity;
++        }
++
++        final AABB box = victim.getBoundingBox();
++        final double probeDepth = me.fuji.combat.KnockbackSync.MAX_GROUND_DISTANCE + 1.0E-6;
++        final double groundDistance = -net.minecraft.world.phys.shapes.Shapes.collide(Direction.Axis.Y, box,
++            victim.level().getBlockCollisions(victim, box.expandTowards(0, -probeDepth, 0)), -probeDepth);
++        if (!me.fuji.combat.KnockbackSync.predictsLanding(beforeHit.y, groundDistance,
++            victim.getGravity(), latency, victim.level().tickRateManager().tickrate())) {
++            return velocity;
++        }
++
++        final var settings = victim.level().sakuraConfig().players.knockback;
++        final double resistance = victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
++        final double groundedLift;
++        if (settings.legacy.enabled) {
++            final var legacy = settings.legacy;
++            final double strength = 1.0 - resistance;
++            groundedLift = Math.min(legacy.verticalMax,
++                legacy.verticalModifier * strength * (legacy.probabilisticResistance ? 1.0 : strength));
++        } else {
++            final double strength = 1.0 - resistance * settings.knockbackResistanceModifier;
++            groundedLift = strength > 0 ? Math.min(settings.knockbackVerticalLimit,
++                settings.knockbackVertical.or(settings.baseKnockback * strength)) : 0.0;
++        }
++
++        return groundedLift > velocity.y && groundedLift > 0 && Double.isFinite(groundedLift)
++            ? new Vec3(velocity.x, groundedLift, velocity.z) : velocity;
++    }
++
+     @Override
+     public float getVoicePitch() {
+         return 1.0F;

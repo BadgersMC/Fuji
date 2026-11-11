@@ -1,0 +1,336 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 07:03:13 -0500
+Subject: [PATCH] Integrate Sakura 26.3 Paper server changes
+
+
+diff --git a/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java b/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java
+index ece6db7b9a0dfd535141c0c756947c4898140503..1c3d78162befd402a8b8ed9c42764d0a1e01073f 100644
+--- a/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java
++++ b/src/main/java/ca/spottedleaf/moonrise/common/list/IteratorSafeOrderedReferenceSet.java
+@@ -42,6 +42,20 @@ public final class IteratorSafeOrderedReferenceSet<E> {
+         this.listElements = (E[])Array.newInstance(arrComponent, arrayCapacity);
+     }
+ 
++    // Sakura start - optimise cannon entities
++    public E rawGet(final int index) {
++        return this.listElements[index];
++    }
++
++    public int indexOf(final E element) {
++        return this.indexMap.getInt(element);
++    }
++
++    public void startRawIterator() {
++        this.iteratorCount++;
++    }
++    // Sakura end - optimise cannon entities
++
+     // includes null (gravestone) elements
+     public E[] getListRaw() {
+         return this.listElements;
+diff --git a/src/main/java/io/papermc/paper/command/PaperVersionCommand.java b/src/main/java/io/papermc/paper/command/PaperVersionCommand.java
+index 5f17c295e2158b93ed6f77012c0ac5507ac88284..47cc581f93356bb0f54d2572e50467d0fb7bffc7 100644
+--- a/src/main/java/io/papermc/paper/command/PaperVersionCommand.java
++++ b/src/main/java/io/papermc/paper/command/PaperVersionCommand.java
+@@ -52,8 +52,10 @@ public class PaperVersionCommand {
+         final PaperVersionCommand command = new PaperVersionCommand();
+ 
+         return Commands.literal("version")
+-            .requires(source -> source.getSender().hasPermission("bukkit.command.version"))
++            // Sakura start - customise version command
+             .then(Commands.argument("plugin", StringArgumentType.word())
++                .requires(source -> source.getSender().hasPermission("bukkit.command.version"))
++                // Sakura end - customise version command
+                 .suggests(command::suggestPlugins)
+                 .executes(command::pluginVersion))
+             .executes(command::serverVersion)
+@@ -130,7 +132,13 @@ public class PaperVersionCommand {
+     }
+ 
+     private int serverVersion(CommandContext<CommandSourceStack> context) {
+-        sendVersion(context.getSource().getSender());
++        // Sakura start - customise version command
++        final CommandSender sender = context.getSource().getSender();
++        //if (sender.hasPermission("bukkit.command.version")) {
++        //    sendVersion(sender);
++        //}
++        me.samsuik.sakura.configuration.SakuraVersionInformation.sendVersionToPlayer(sender);
++        // Sakura end - customise version command
+         return Command.SINGLE_SUCCESS;
+     }
+ 
+diff --git a/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java b/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java
+index a4212e9b0df55580b60666bc306d812d6f9531ba..81587d65631ac627f84cdab8e0b2443527c082fa 100644
+--- a/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java
++++ b/src/main/java/io/papermc/paper/command/subcommands/EntityCommand.java
+@@ -113,7 +113,11 @@ public final class EntityCommand implements PaperSubcommand {
+                 ChunkPos chunk = e.chunkPosition();
+                 info.left++;
+                 info.right.put(chunk, info.right.getOrDefault(chunk, 0) + 1);
+-                if (!level.isPositionEntityTicking(e.blockPosition()) || (e instanceof net.minecraft.world.entity.Marker && !level.paperConfig().entities.markers.tick)) { // Paper - Configurable marker ticking
++                // Sakura start - optimise cannon entities
++                if (!level.isPositionEntityTicking(e.blockPosition())
++                    || (e instanceof net.minecraft.world.entity.Marker && !level.paperConfig().entities.markers.tick)
++                    || (e instanceof final me.samsuik.sakura.entity.SakuraEntity sakuraEntity && sakuraEntity.getSakuraEntityController().isSleeping())) { // Paper - Configurable marker ticking
++                    // Sakura end - optimise cannon entities
+                     nonEntityTicking.merge(key, 1, Integer::sum);
+                 }
+             });
+diff --git a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+index fa692bceb28d86021a0d350da0dd1fbe33bc12e6..96dc3758442bf35273ad8ab459ca0b5b586056a9 100644
+--- a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
++++ b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+@@ -180,7 +180,7 @@ public class PaperConfigurations extends Configurations<GlobalConfiguration, Wor
+             .defaultOptions(PaperConfigurations::defaultOptions);
+     }
+ 
+-    private static ConfigurationOptions defaultOptions(ConfigurationOptions options) {
++    public static ConfigurationOptions defaultOptions(ConfigurationOptions options) { // Sakura - sakura configuration files; private -> public
+         return options.serializers(builder -> builder
+             .register(MapSerializer.TYPE, new MapSerializer(false))
+             .register(new EnumValueSerializer())
+diff --git a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+index db23f74b4c02c43ab42cf8db15c400eedf35d343..1a1217635774e6d97b95449933288dc4a15073ca 100644
+--- a/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
++++ b/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java
+@@ -81,7 +81,7 @@ public final class InnerClassFieldDiscoverer implements FieldDiscoverer<Map<Fiel
+     }
+ 
+     @SuppressWarnings("unchecked")
+-    private static InnerClassFieldDiscoverer create(final Map<Class<?>, Object> overrides, final List<Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>>> fieldProcessors) {
++    public static InnerClassFieldDiscoverer create(final Map<Class<?>, Object> overrides, final List<Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>>> fieldProcessors) { // Sakura - sakura configuration files; private -> public
+         final Map<Class<? extends Annotation>, List<Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>>>> processors = new LinkedHashMap<>();
+         for (final Definition<?, ?, ? extends FieldProcessor.Factory<?, ?>> definition : fieldProcessors) {
+             processors.computeIfAbsent(definition.annotation(), k -> new ArrayList<>()).add(definition);
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index e5c402ad0c49e7c6412c4b3f1ddb93ffe8b1e5ea..7faa2a28f2a3bfa296b2ec3541a1800e28318f59 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -987,6 +987,7 @@ public final class CraftServer implements Server {
+         this.console.paperConfigurations.reloadConfigs(this.console);
+         org.purpurmc.purpur.PurpurConfig.init((File) console.options.valueOf("purpur-settings")); // Purpur - Purpur config files
+         this.console.galeConfigurations.reloadConfigs(this.console); // Gale - Gale configuration
++        this.console.sakuraConfigurations.reloadConfigs(this.console); // Sakura - sakura configuration files; missing comment above :<
+         for (ServerLevel world : this.console.getAllLevels()) {
+             // world.serverLevelData.setDifficulty(config.difficulty); // Paper - per level difficulty
+             world.setSpawnSettings(world.isSpawningMonsters()); // Paper - per level difficulty (from MinecraftServer#setDifficulty(ServerLevel, Difficulty, boolean))
+@@ -1019,6 +1020,7 @@ public final class CraftServer implements Server {
+         this.reloadData();
+         org.spigotmc.SpigotConfig.registerCommands(); // Spigot
+         io.papermc.paper.command.PaperCommands.registerCommands(this.console); // Paper
++        me.samsuik.sakura.command.SakuraCommands.registerCommands(this.console); // Sakura - sakura configuration files
+         this.spark.registerCommandBeforePlugins(this); // Paper - spark
+         org.purpurmc.purpur.PurpurConfig.registerCommands(); // Purpur - Purpur config files
+         this.overrideAllCommandBlockCommands = this.commandsConfiguration.getStringList("command-block-overrides").contains("*");
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+index 7e2626bf5eaaf3f9c28b167b83221ab85afd9510..27f422a88e04d008efd7cd20c08281821883751c 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+@@ -300,6 +300,12 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+         ).isValid();
+     }
+     // Paper end
++    // Sakura start - local config api
++    @Override
++    public final me.samsuik.sakura.configuration.local.LocalConfigurationAccessor localConfig() {
++        return this.getHandle().localConfig();
++    }
++    // Sakura end - local config api
+ 
+     private static final Random rand = new Random();
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
+index ca1a3e1b4cd2b7b62cd65bb02fa79e2ae9d3da48..29be126bdb060570b4d038f8eb3c07a6cf5cf4b6 100644
+--- a/src/main/java/org/bukkit/craftbukkit/Main.java
++++ b/src/main/java/org/bukkit/craftbukkit/Main.java
+@@ -151,6 +151,13 @@ public class Main {
+                     .defaultsTo(new File("purpur.yml"))
+                     .describedAs("Yml file");
+                 // Purpur end - Purpur config files
++                // Sakura start - sakura configuration files
++                acceptsAll(asList("sakura-dir", "sakura-settings-directory"), "Directory for Sakura settings")
++                    .withRequiredArg()
++                    .ofType(File.class)
++                    .defaultsTo(new File(me.samsuik.sakura.configuration.SakuraConfigurations.CONFIG_DIR))
++                    .describedAs("Config directory");
++                // Sakura end - sakura configuration files
+ 
+                 this.accepts("server-name", "Name of the server")
+                         .withRequiredArg()
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index b1438ccec3fbc8985c7ee95da3d1a803631007e7..25a88f0576376fb50c2e32ddfcdd05d96470b9ed 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -147,6 +147,17 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         return getHandle().isSunBurnTick();
+     }
+     // Purpur end - API for any mob to burn daylight
++    // Sakura start - entity pushed by fluid api
++    @Override
++    public final boolean isPushedByFluid() {
++        return this.getHandle().isPushedByFluid();
++    }
++
++    @Override
++    public final void setPushedByFluid(final boolean push) {
++        this.getHandle().pushedByFluid = push;
++    }
++    // Sakura end - entity pushed by fluid api
+ 
+     public static <T extends Entity> CraftEntity getEntity(CraftServer server, T entity) {
+         Preconditions.checkArgument(entity != null, "Unknown entity");
+@@ -208,7 +219,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+ 
+     @Override
+     public Location getLocation() {
+-        return CraftLocation.toBukkit(this.entity.position(), this.getWorld(), this.entity.getBukkitYaw(), this.entity.getXRot());
++        return CraftLocation.toBukkit(this.entity.sakura$position(), this.getWorld(), this.entity.getBukkitYaw(), this.entity.getXRot()); // Sakura - optimise cannon entities
+     }
+ 
+     @Override
+@@ -227,7 +238,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+ 
+     @Override
+     public Vector getVelocity() {
+-        return CraftVector.toBukkit(this.entity.getDeltaMovement());
++        return CraftVector.toBukkit(this.entity.sakura$deltaMovement()); // Sakura - optimise cannon entities
+     }
+ 
+     @Override
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java
+index 05e6007b52dfc86ce23c2507383cbd72061f0c5e..b8260073314e4f17f6fa5c4e1d77fe74cc0cf2d2 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftFallingBlock.java
+@@ -14,6 +14,18 @@ public class CraftFallingBlock extends CraftEntity implements FallingBlock {
+         super(server, entity);
+     }
+ 
++    // Sakura start - height parity api
++    @Override
++    public final void setHeightParity(final boolean heightParity) {
++        this.getHandle().heightParity = heightParity;
++    }
++
++    @Override
++    public final boolean getHeightParity() {
++        return this.getHandle().heightParity;
++    }
++    // Sakura end - height parity api
++
+     @Override
+     public FallingBlockEntity getHandle() {
+         return (FallingBlockEntity) this.entity;
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index 4ca84f9f065a8d1a656e43e1068ecc10df4f0521..45c2a91837dce5a7bb9cc41d3df2ae6d543ca03c 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -259,6 +259,18 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         this.firstPlayed = System.currentTimeMillis();
+     }
+ 
++    // Sakura start - entity tracking range modifier
++    @Override
++    public final double getTrackingRangeModifier() {
++        return this.getHandle().trackingRangeModifier * 100.0;
++    }
++
++    @Override
++    public final void setTrackingRangeModifier(final double modifier) {
++        this.getHandle().trackingRangeModifier = modifier / 100.0;
++    }
++    // Sakura end - entity tracking range modifier
++
+     @Override
+     public ServerPlayer getHandle() {
+         return (ServerPlayer) this.entity;
+@@ -2275,6 +2287,11 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+             handle.expToDrop = data.getIntOr("expToDrop", 0);
+             handle.keepLevel = data.getBooleanOr("keepLevel", false);
+         });
++        // Sakura start - client visibility settings; load from nbt
++        input.child("sakura").ifPresent(sakura -> {
++            this.getHandle().visibilitySettings.loadData(sakura);
++        });
++        // Sakura end - client visibility settings; load from nbt
+     }
+ 
+     public void setExtraData(ValueOutput output) {
+@@ -2296,6 +2313,10 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         paper.putLong("LastLogin", handle.loginTime);
+         paper.putLong("LastSeen", System.currentTimeMillis());
+         // Paper end
++        // Sakura start - client visibility settings; save to nbt
++        final ValueOutput sakura = output.child("sakura");
++        this.getHandle().visibilitySettings.saveData(sakura);
++        // Sakura end - client visibility settings; save to nbt
+     }
+ 
+     @Override
+@@ -2912,6 +2933,13 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         return this.getHandle().allowsListing();
+     }
+ 
++    // Sakura start - client visibility settings; api
++    @Override
++    public final me.samsuik.sakura.player.visibility.VisibilitySettings getVisibility() {
++        return this.getHandle().visibilitySettings;
++    }
++    // Sakura end - client visibility settings; api
++
+     // Paper start
+     @Override
+     public net.kyori.adventure.text.Component displayName() {
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftSulfurCube.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftSulfurCube.java
+index a9eb5aa70941edb611e91ee71d0f4103b481ef8f..5954f420d5171556c66b95a61e7bbe91121ab5bf 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftSulfurCube.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftSulfurCube.java
+@@ -19,6 +19,18 @@ public class CraftSulfurCube extends CraftAbstractCubeMob implements SulfurCube,
+         super(server, entity);
+     }
+ 
++    // Sakura start - height parity api
++    @Override
++    public final void setHeightParity(final boolean heightParity) {
++        this.getHandle().heightParity = heightParity;
++    }
++
++    @Override
++    public final boolean getHeightParity() {
++        return this.getHandle().heightParity;
++    }
++    // Sakura end - height parity api
++
+     @Override
+     public net.minecraft.world.entity.monster.cubemob.SulfurCube getHandle() {
+         return (net.minecraft.world.entity.monster.cubemob.SulfurCube) this.entity;
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index 02085b968ca47885d6d0de655df5d16250367404..ebcce404bef18dd32213188ae08961fe95327075 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -1030,6 +1030,12 @@ public class CraftEventFactory {
+         victim.expToDrop = event.getDroppedExp();
+ 
+         Runnable dropAll = () -> {
++            // Sakura start - mobs insert items into hoppers on death
++            if (level.sakuraConfig().entity.insertItemsIntoHoppersOnDeath) {
++                me.samsuik.sakura.utils.HopperHelper.insertItemsOnDeath(level, entity.getHandle(), drops);
++            }
++            // Sakura end - mobs insert items into hoppers on death
++
+             dropAllItems(drops, item -> victim.spawnAtLocation(level, item));
+         };
+ 
+diff --git a/src/main/java/org/spigotmc/SpigotConfig.java b/src/main/java/org/spigotmc/SpigotConfig.java
+index 2fb235c0dd463fe9bad3c08ed5077a61c854fab8..6829a0a49edde448ab5b6aa22641bd16f4650959 100644
+--- a/src/main/java/org/spigotmc/SpigotConfig.java
++++ b/src/main/java/org/spigotmc/SpigotConfig.java
+@@ -227,7 +227,7 @@ public class SpigotConfig {
+     }
+ 
+     private static void tpsCommand() {
+-        SpigotConfig.commands.put("tps", new TicksPerSecondCommand("tps"));
++        // Sakura - track tick information; replace tps command
+     }
+ 
+     public static int playerSample;

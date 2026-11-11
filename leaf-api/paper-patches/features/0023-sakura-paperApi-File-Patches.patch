@@ -1,0 +1,117 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: File <noreply+automated@papermc.io>
+Date: Sun, 20 Apr 1997 08:37:42 -0500
+Subject: [PATCH] sakura paperApi File Patches
+
+
+diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
+index 7551fb654b45bcf88f67a3752314ec3929e617cb..caef8997dde4f58d175f978487ed8d3d2a7c2d82 100644
+--- a/src/main/java/org/bukkit/Bukkit.java
++++ b/src/main/java/org/bukkit/Bukkit.java
+@@ -127,6 +127,20 @@ public final class Bukkit {
+         // Paper end
+     }
+ 
++    // Sakura start - customise version command; expose git information
++    @NotNull
++    public static String getGitInformation() {
++        final io.papermc.paper.ServerBuildInfo version = io.papermc.paper.ServerBuildInfo.buildInfo();
++        final String gitBranch = version.gitBranch().orElse("Dev");
++        final String gitCommit = version.gitCommit().orElse("");
++        String branchMsg = " on " + gitBranch;
++        if ("master".equals(gitBranch) || "main".equals(gitBranch)) {
++            branchMsg = "";  // Don't show branch on main/master
++        }
++        return "(Git: " + gitCommit + branchMsg + ")";
++    }
++    // Sakura end - customise version command; expose git information
++
+     /**
+      * Gets the name of this server implementation.
+      *
+diff --git a/src/main/java/org/bukkit/World.java b/src/main/java/org/bukkit/World.java
+index e375da30511cb1f8180cfd0c75137c825510b558..35c9a71c6e9da13d4d5c0899d8fbe639f01edf14 100644
+--- a/src/main/java/org/bukkit/World.java
++++ b/src/main/java/org/bukkit/World.java
+@@ -4807,6 +4807,11 @@ public interface World extends RegionAccessor, WorldInfo, PluginMessageRecipient
+     void setSendViewDistance(int viewDistance);
+     // Paper end - view distance api
+ 
++    // Sakura start - local config api
++    @NotNull
++    me.samsuik.sakura.configuration.local.LocalConfigurationAccessor localConfig();
++    // Sakura end - local config api
++
+     /**
+      * Gets all generated structures that intersect the chunk at the given
+      * coordinates. <br>
+diff --git a/src/main/java/org/bukkit/entity/Entity.java b/src/main/java/org/bukkit/entity/Entity.java
+index b421957fdcdf4b99e663d2f11468f273b91c3ddb..b9ac9f3c78c7ef70dfa962048751baa5d6199861 100644
+--- a/src/main/java/org/bukkit/entity/Entity.java
++++ b/src/main/java/org/bukkit/entity/Entity.java
+@@ -52,6 +52,22 @@ import org.jetbrains.annotations.UnmodifiableView;
+  */
+ public interface Entity extends Metadatable, CommandSender, Nameable, PersistentDataHolder, HoverEventSource<HoverEvent.ShowEntity>, net.kyori.adventure.sound.Sound.Emitter, net.kyori.adventure.sound.Sound.Source.Provider, DataComponentView {
+ 
++    // Sakura start - entity pushed by fluid api
++    /**
++     * Gets if the entity will be pushed by fluid.
++     *
++     * @return if this entity can be pushed by fluid.
++     */
++    boolean isPushedByFluid();
++
++    /**
++     * Sets if the entity will be pushed by fluid.
++     *
++     * @param state whether entity should be pushed by fluid
++     */
++    void setPushedByFluid(final boolean state);
++    // Sakura end - entity pushed by fluid api
++
+     /**
+      * Gets the entity's current position
+      *
+diff --git a/src/main/java/org/bukkit/entity/FallingBlock.java b/src/main/java/org/bukkit/entity/FallingBlock.java
+index 0f709b03bc3040c785f2cf02abe790e6a85685af..4bdd7cc734877dd14467172066b6fdb102818c97 100644
+--- a/src/main/java/org/bukkit/entity/FallingBlock.java
++++ b/src/main/java/org/bukkit/entity/FallingBlock.java
+@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
+ /**
+  * Represents a falling block
+  */
+-public interface FallingBlock extends Entity {
++public interface FallingBlock extends Entity, me.samsuik.sakura.entity.CannonEntity { // Sakura - cannon entity api
+ 
+     /**
+      * Get the Material of the falling block
+diff --git a/src/main/java/org/bukkit/entity/Player.java b/src/main/java/org/bukkit/entity/Player.java
+index 341757ab54cf06af1d99e43764ffd4ac2676eb32..03dbe318a9c0bf824a40edac7da70cdcfea2a7de 100644
+--- a/src/main/java/org/bukkit/entity/Player.java
++++ b/src/main/java/org/bukkit/entity/Player.java
+@@ -75,6 +75,12 @@ import org.jspecify.annotations.Nullable;
+ @NullMarked
+ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginMessageRecipient, net.kyori.adventure.identity.Identified, net.kyori.adventure.bossbar.BossBarViewer, com.destroystokyo.paper.network.NetworkClient, ObjectContentsLike { // Paper
+ 
++    // Sakura start - entity tracking range modifier
++    double getTrackingRangeModifier();
++
++    void setTrackingRangeModifier(final double modifier);
++    // Sakura end - entity tracking range modifier
++
+     // Paper start
+     @Override
+     default net.kyori.adventure.identity.Identity identity() {
+diff --git a/src/main/java/org/bukkit/entity/SulfurCube.java b/src/main/java/org/bukkit/entity/SulfurCube.java
+index 580b78082a080e339a5197d77b4ecc9415481736..d4be856f7cf2be3b2aac9ee22d2ba0e2f88e4232 100644
+--- a/src/main/java/org/bukkit/entity/SulfurCube.java
++++ b/src/main/java/org/bukkit/entity/SulfurCube.java
+@@ -18,7 +18,7 @@ import org.jspecify.annotations.NullMarked;
+  * Represents a Sulfur Cube.
+  */
+ @NullMarked
+-public interface SulfurCube extends AbstractCubeMob, Shearable, Bucketable, Ageable {
++public interface SulfurCube extends AbstractCubeMob, Shearable, Bucketable, Ageable, me.samsuik.sakura.entity.CannonEntity { // Sakura - cannon entity api
+ 
+     /**
+      * Gets the amount of ticks until this sulfur cube explode.

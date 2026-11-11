@@ -1,0 +1,96 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 08:32:39 -0500
+Subject: [PATCH] Add opt-in Fuji knockback synchronization and flush settings
+
+
+diff --git a/src/main/java/me/fuji/combat/KnockbackSync.java b/src/main/java/me/fuji/combat/KnockbackSync.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..926d719156deb85054d0debcd8c0c6901905bfcc
+--- /dev/null
++++ b/src/main/java/me/fuji/combat/KnockbackSync.java
+@@ -0,0 +1,32 @@
++package me.fuji.combat;
++
++public final class KnockbackSync {
++    public static final double MAX_GROUND_DISTANCE = 1.3;
++    public static final int MIN_LATENCY_MILLIS = 25;
++    private static final int MAX_PREDICTION_TICKS = 8;
++    private static final double AIR_DRAG = 0.98;
++
++    private KnockbackSync() {
++    }
++
++    public static boolean predictsLanding(double verticalVelocity, final double groundDistance,
++                                           final double gravity, final int latencyMillis, final float tickRate) {
++        if (!Double.isFinite(verticalVelocity) || !(groundDistance > 0 && groundDistance <= MAX_GROUND_DISTANCE)
++            || !(gravity > 0 && Double.isFinite(gravity)) || latencyMillis < MIN_LATENCY_MILLIS
++            || !(tickRate > 0 && Float.isFinite(tickRate))) {
++            return false;
++        }
++
++        final int ticks = Math.min(MAX_PREDICTION_TICKS,
++            (int) Math.ceil(Math.max(1, latencyMillis - MIN_LATENCY_MILLIS) * (double) tickRate / 1000));
++        double height = groundDistance;
++        for (int tick = 0; tick < ticks; tick++) {
++            height += verticalVelocity;
++            if (height <= 0) {
++                return true;
++            }
++            verticalVelocity = (verticalVelocity - gravity) * AIR_DRAG;
++        }
++        return false;
++    }
++}
+diff --git a/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java b/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
+index 5482ecb27e2baa191e8434cef74aa09a7e05b7f1..141b8597f5cbc58ae9be423dd32aced0166514ec 100644
+--- a/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
++++ b/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
+@@ -209,6 +209,10 @@ public final class WorldConfiguration extends ConfigurationPart {
+ 
+         public Knockback knockback = new Knockback();
+         public final class Knockback extends ConfigurationPart {
++            @Comment("Compensate melee PvP knockback when the victim is predicted to have landed on their client.")
++            public boolean sync = false;
++            @Comment("Flush the final melee PvP knockback packet immediately after plugins have handled it.")
++            public boolean flush = false;
+             public DoubleOr.Default knockbackVertical = DoubleOr.Default.USE_DEFAULT;
+             public double knockbackVerticalLimit = 0.4;
+             public boolean verticalKnockbackRequireGround = true;
+diff --git a/src/test/java/me/fuji/combat/KnockbackSyncTest.java b/src/test/java/me/fuji/combat/KnockbackSyncTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..2e2ec21a59105ead14ade08519c486ee81760653
+--- /dev/null
++++ b/src/test/java/me/fuji/combat/KnockbackSyncTest.java
+@@ -0,0 +1,31 @@
++package me.fuji.combat;
++
++import org.junit.jupiter.api.Test;
++
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++class KnockbackSyncTest {
++    @Test
++    void predictsLandingOnlyWhenLatencyCoversTheFlight() {
++        assertFalse(KnockbackSync.predictsLanding(-0.2, 0.4, 0.08, 50, 20));
++        assertTrue(KnockbackSync.predictsLanding(-0.2, 0.4, 0.08, 125, 20));
++        assertFalse(KnockbackSync.predictsLanding(0.35, 0.4, 0.08, 125, 20));
++    }
++
++    @Test
++    void rejectsGroundedDistantAndInvalidSamples() {
++        assertFalse(KnockbackSync.predictsLanding(-0.3, 0.0, 0.08, 300, 20));
++        assertFalse(KnockbackSync.predictsLanding(-0.3, 1.31, 0.08, 300, 20));
++        assertFalse(KnockbackSync.predictsLanding(-0.3, 0.1, 0.08, 24, 20));
++        assertFalse(KnockbackSync.predictsLanding(Double.NaN, 0.1, 0.08, 300, 20));
++        assertFalse(KnockbackSync.predictsLanding(-0.3, 0.1, 0.0, 300, 20));
++    }
++
++    @Test
++    void boundsPredictionAndUsesServerTickRate() {
++        assertTrue(KnockbackSync.predictsLanding(-0.1, 0.4, 0.08, 100, 40));
++        assertFalse(KnockbackSync.predictsLanding(-0.1, 0.4, 0.08, 100, 10));
++        assertFalse(KnockbackSync.predictsLanding(0.5, 1.2, 0.08, 2000, 20));
++    }
++}

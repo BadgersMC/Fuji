@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 07:57:52 -0500
+Subject: [PATCH] Fix Sakura integration compile errors in Entity
+
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 9d7b704e773231a20fa40932d059c8bed9db62e8..bc20e14244313046738adecdd6da758e043b7115 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -2330,8 +2330,9 @@ public abstract class Entity
+         boolean movedFar = mechanicsTarget.before(me.samsuik.sakura.mechanics.MechanicVersion.v1_21_10)
+             || from.distanceToSqr(to) > Mth.square(0.9999900000002526);
+         // Sakura end - configure server mechanics
+-        boolean debugEntityBlockIntersections = this.level instanceof ServerLevel serverLevel
+-            && serverLevel.getServer().debugSubscribers().hasAnySubscriberFor(DebugSubscriptions.ENTITY_BLOCK_INTERSECTIONS);
++        final ServerLevel debugLevel = this.level instanceof ServerLevel serverLevel
++            && serverLevel.getServer().debugSubscribers().hasAnySubscriberFor(DebugSubscriptions.ENTITY_BLOCK_INTERSECTIONS)
++            ? serverLevel : null;
+         AtomicInteger iterations = new AtomicInteger();
+         BlockGetter.forEachBlockIntersectedBetween(
+             from,
+@@ -2364,8 +2365,8 @@ public abstract class Entity
+                 final BlockState state = chunk.getBlockState(blockIntersection);
+                 // Sakura end - optimise check inside blocks
+                 if (state.isAir()) {
+-                    if (debugEntityBlockIntersections) {
+-                        this.debugBlockIntersection(level, blockIntersection.immutable(), false, false);
++                    if (debugLevel != null) {
++                        this.debugBlockIntersection(debugLevel, blockIntersection.immutable(), false, false);
+                     }
+ 
+                     return true;
+@@ -2397,8 +2398,8 @@ public abstract class Entity
+                             state.getFluidState().entityInside(level, blockIntersection, this, effectCollector);
+                         }
+ 
+-                        if (debugEntityBlockIntersections) {
+-                            this.debugBlockIntersection(level, blockIntersection.immutable(), insideBlock, insideFluid);
++                        if (debugLevel != null) {
++                            this.debugBlockIntersection(debugLevel, blockIntersection.immutable(), insideBlock, insideFluid);
+                         }
+ 
+                         return true;
+@@ -6279,7 +6280,7 @@ public abstract class Entity
+         return org.dreeam.leaf.util.LeafConstants.ENABLE_FMA ? Math.fma(dx, dx, Math.fma(dy, dy, dz * dz)) : dx * dx + dy * dy + dz * dz;
+     }
+ 
+-    public final double distanceToSqr(final Vec3 pos) {
++    public double distanceToSqr(final Vec3 pos) {
+         final double dx = this.getX() - pos.x;
+         final double dy = this.getY() - pos.y;
+         final double dz = this.getZ() - pos.z;

@@ -1,0 +1,88 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 07:59:12 -0500
+Subject: [PATCH] Adapt Fuji gameplay modules to Leaf 26.3 configuration API
+
+
+diff --git a/src/main/java/org/dreeam/leaf/config/modules/gameplay/CannonHeightNerf.java b/src/main/java/org/dreeam/leaf/config/modules/gameplay/CannonHeightNerf.java
+index 4623c55649b9d29104aeb099ef43176e0d0c9f50..4eb44524fa9090feee1a92e814c6e8c0af11f5e2 100644
+--- a/src/main/java/org/dreeam/leaf/config/modules/gameplay/CannonHeightNerf.java
++++ b/src/main/java/org/dreeam/leaf/config/modules/gameplay/CannonHeightNerf.java
+@@ -1,7 +1,7 @@
+ package org.dreeam.leaf.config.modules.gameplay;
+ 
+-import org.dreeam.leaf.config.ConfigModules;
+-import org.dreeam.leaf.config.EnumConfigCategory;
++import org.dreeam.leaf.config.ConfigModule;
++import org.dreeam.leaf.config.ConfigCategory;
+ 
+ /**
+  * Fuji - roof-cannon height nerf.
+@@ -15,10 +15,10 @@ import org.dreeam.leaf.config.EnumConfigCategory;
+  * Defaults off (stock Paper behavior); only takes effect when the corresponding Paper height-nerf is
+  * also set.
+  */
+-public class CannonHeightNerf extends ConfigModules {
++public class CannonHeightNerf extends ConfigModule {
+ 
+-    public String getBasePath() {
+-        return EnumConfigCategory.GAMEPLAY.getBaseKeyName() + ".cannon-height-nerf";
++    public String basePath() {
++        return ConfigCategory.GAMEPLAY.basePath() + ".cannon-height-nerf";
+     }
+ 
+     public static boolean tntOnlyWithHorizontalMovement = false;
+@@ -26,7 +26,7 @@ public class CannonHeightNerf extends ConfigModules {
+ 
+     @Override
+     public void onLoaded() {
+-        tntOnlyWithHorizontalMovement = config.getBoolean(getBasePath() + ".tnt-only-with-horizontal-movement", tntOnlyWithHorizontalMovement, config.pickStringRegionBased(
++        tntOnlyWithHorizontalMovement = globalConfig.getBoolean(basePath() + ".tnt-only-with-horizontal-movement", tntOnlyWithHorizontalMovement, globalConfig.pickStringRegionBased(
+             """
+             Only apply the TNT height nerf (fixes.tnt-entity-height-nerf) to TNT that is also moving
+             horizontally. Keeps roof cannons working when projectiles arc back below the limit.""",
+@@ -34,7 +34,7 @@ public class CannonHeightNerf extends ConfigModules {
+             仅对同时存在水平移动的 TNT 应用高度削减（fixes.tnt-entity-height-nerf），
+             使越墙后再次落回限制以下的炮弹得以保留。"""
+         ));
+-        fallingBlockOnlyWithHorizontalMovement = config.getBoolean(getBasePath() + ".falling-block-only-with-horizontal-movement", fallingBlockOnlyWithHorizontalMovement, config.pickStringRegionBased(
++        fallingBlockOnlyWithHorizontalMovement = globalConfig.getBoolean(basePath() + ".falling-block-only-with-horizontal-movement", fallingBlockOnlyWithHorizontalMovement, globalConfig.pickStringRegionBased(
+             "Same as tnt-only-with-horizontal-movement, but for the falling-block height nerf.",
+             "与 tnt-only-with-horizontal-movement 相同，但作用于下落方块的高度削减。"
+         ));
+diff --git a/src/main/java/org/dreeam/leaf/config/modules/gameplay/InstantFallingBlocks.java b/src/main/java/org/dreeam/leaf/config/modules/gameplay/InstantFallingBlocks.java
+index cff55f15196516207ba4cce6355444fddb180529..c3bbe2512896bec054700bc658d254cf02c30c41 100644
+--- a/src/main/java/org/dreeam/leaf/config/modules/gameplay/InstantFallingBlocks.java
++++ b/src/main/java/org/dreeam/leaf/config/modules/gameplay/InstantFallingBlocks.java
+@@ -1,7 +1,7 @@
+ package org.dreeam.leaf.config.modules.gameplay;
+ 
+-import org.dreeam.leaf.config.ConfigModules;
+-import org.dreeam.leaf.config.EnumConfigCategory;
++import org.dreeam.leaf.config.ConfigModule;
++import org.dreeam.leaf.config.ConfigCategory;
+ 
+ /**
+  * Fuji - instant falling-block stacking.
+@@ -13,17 +13,17 @@ import org.dreeam.leaf.config.EnumConfigCategory;
+  * <p>
+  * Defaults off (vanilla behavior: falling blocks spawn as gravity entities).
+  */
+-public class InstantFallingBlocks extends ConfigModules {
++public class InstantFallingBlocks extends ConfigModule {
+ 
+-    public String getBasePath() {
+-        return EnumConfigCategory.GAMEPLAY.getBaseKeyName() + ".instant-falling-blocks";
++    public String basePath() {
++        return ConfigCategory.GAMEPLAY.basePath() + ".instant-falling-blocks";
+     }
+ 
+     public static boolean enabled = false;
+ 
+     @Override
+     public void onLoaded() {
+-        enabled = config.getBoolean(getBasePath(), enabled, config.pickStringRegionBased(
++        enabled = globalConfig.getBoolean(basePath(), enabled, globalConfig.pickStringRegionBased(
+             """
+             Instantly stack falling blocks onto an existing pile of the same kind below them (within 20
+             blocks) instead of spawning a gravity entity, converting any falling-block entities already
