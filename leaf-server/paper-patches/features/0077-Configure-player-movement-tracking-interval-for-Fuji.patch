@@ -1,0 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 13:58:15 -0500
+Subject: [PATCH] Configure player movement tracking interval for Fuji
+
+
+diff --git a/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java b/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
+index 141b8597f5cbc58ae9be423dd32aced0166514ec..2ea5523f1f17beb822cb9abc16bbf82429d18b35 100644
+--- a/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
++++ b/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
+@@ -171,6 +171,9 @@ public final class WorldConfiguration extends ConfigurationPart {
+ 
+     public Players players;
+     public final class Players extends ConfigurationPart {
++        @Comment("Fuji: Player movement tracking packets sent to other players. 2 = vanilla (up to 10 per second); 1 = every tick (up to 20 per second). Other values use vanilla timing.")
++        public int movementPacketIntervalTicks = 2;
++
+         public Combat combat = new Combat();
+         public final class Combat extends ConfigurationPart {
+             public boolean legacyCombatMechanics = false;
