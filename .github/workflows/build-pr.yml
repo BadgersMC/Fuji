@@ -1,46 +1,55 @@
-name: Build Pull Request
+name: Build Fuji 26.3 Pull Request
 
 on:
   pull_request:
-    branches: [ "ver/26.3" ]
+    branches: ['26.3']
 
 jobs:
   build:
-    # Run workflow only on main repo
-    if: ${{ github.repository == 'Winds-Studio/Leaf' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    env:
-      MC_VERSION: "26.3"
-
+    if: github.repository == 'BadgersMC/Fuji'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
-      - name: Checkout repository
-        uses: useblacksmith/checkout@v1
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v6
+      - name: Checkout Fuji
+        uses: actions/checkout@v4
         with:
-          distribution: 'zulu'
+          fetch-depth: 0
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
           java-version: '25'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-      - name: Configure Git
+      - name: Configure Paperweight Git identity
         run: |
-          git config --global user.email "no-reply@github.com"
-          git config --global user.name "Github Actions"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@users.noreply.github.com"
 
       - name: Apply patches
         run: ./gradlew applyAllPatches --stacktrace --no-daemon
-      - name: Create LeafclipJar
+
+      - name: Build runnable Fuji jar
         run: ./gradlew createLeafclipJar --stacktrace --no-daemon
 
-      - name: Rename Paperclip JARs
+      - name: Prepare distributable
+        shell: bash
         run: |
-          mv leaf-server/build/libs/leaf-leafclip-${{ env.MC_VERSION }}*.jar ./leaf-${{ env.MC_VERSION }}.jar
+          shopt -s nullglob
+          jars=(leaf-server/build/libs/leaf-leafclip-26.3*.jar)
+          if (( ${#jars[@]} != 1 )); then
+            echo "Expected one 26.3 Leafclip jar; found ${#jars[@]}"
+            ls -lah leaf-server/build/libs/ || true
+            exit 1
+          fi
+          cp "${jars[0]}" fuji-26.3-pr.jar
 
-      - name: Upload Leaf
-        uses: actions/upload-artifact@v7
+      - name: Upload Fuji PR build
+        uses: actions/upload-artifact@v4
         with:
-          path: ./leaf-${{ env.MC_VERSION }}.jar
-          archive: false
+          name: fuji-26.3-pr-${{ github.event.pull_request.number }}
+          path: fuji-26.3-pr.jar
+          if-no-files-found: error
+          retention-days: 7
