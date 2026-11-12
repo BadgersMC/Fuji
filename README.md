@@ -1,157 +1,126 @@
-<img src="public/image/leaf_banner.png" alt="Leaf">
-<div align="center">
+<p align="center">
+  <img src="assets/fuji-logo.png" width="200" alt="Fuji logo — Mount Fuji at golden hour with hanging wisteria">
+</p>
 
-[![Download](https://img.shields.io/badge/releases-blue?label=download&style=for-the-badge&colorA=19201a&colorB=298046)](https://www.leafmc.one/download)⠀
-[![Github Actions Build](https://img.shields.io/github/actions/workflow/status/Winds-Studio/Leaf/build-263.yml?&style=for-the-badge&colorA=19201a&colorB=298046)](https://github.com/Winds-Studio/Leaf/actions)⠀
-[![Discord](https://img.shields.io/discord/1145991395388162119?label=discord&style=for-the-badge&colorA=19201a&colorB=298046)](https://discord.gg/gfgAwdSEuM)
-[![Docs](https://img.shields.io/badge/leafmc.one/docs/-blue?label=docs&style=for-the-badge&colorA=19201a&colorB=298046)](https://www.leafmc.one/docs/getting-started)
+<h1 align="center">Fuji&nbsp;&nbsp;藤</h1>
 
-**Leaf** is a [Paper](https://papermc.io/) fork designed to be customizable and high-performance.
-</div>
+<p align="center"><em>the peak of cannoning</em></p>
+
+<p align="center">
+  <a href="https://github.com/BadgersMC/Fuji/tree/26.3"><img src="https://img.shields.io/badge/Minecraft-26.3-3E4C7E" alt="Minecraft 26.3"></a>
+  <img src="https://img.shields.io/badge/Java-25-7C6BC4" alt="Java 25">
+  <img src="https://img.shields.io/badge/status-experimental-F4BC88" alt="Experimental">
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-upstream%20licenses-2B2540" alt="Upstream licenses"></a>
+</p>
+
+---
+
+**Fuji** is a Minecraft server fork combining **[Leaf](https://github.com/Winds-Studio/Leaf)** performance work with **[Sakura](https://github.com/Samsuik/Sakura)**-derived cannoning mechanics. It is aimed at factions, raiding, technical Minecraft, and networks that need predictable TNT behavior without giving up Paper's plugin ecosystem.
 
 > [!WARNING]
-> Leaf is a performance-oriented fork. Make sure to take backups **before** switching to it. Everyone is welcome to contribute optimizations or report issues to help us improve.
+> **The Minecraft 26.3 branch is experimental.** Features and compatibility are still being validated. Back up your worlds and test plugins, cannon designs, and gameplay before considering a production migration.
 
-**English** | [中文](public/readme/README_CN.md)
+## Why Fuji?
 
-## 🍃 Features
-- **Based on [Paper](https://papermc.io/)** for generic performance and flexible API
-- **Async** pathfinding, mob spawning and entity tracker
-- **Various optimizations** blending from [other forks](#-credits) and our own
-- **Fully compatible** with Spigot and Paper plugins
-- **Latest dependencies**, keeping all dependencies up-to-date
-- **Allows all characters in usernames**, including Chinese and other characters
-- **Fixes** some Minecraft bugs
-- **Mod Protocols** support
-- **More customized** relying on features of [Purpur](https://github.com/PurpurMC/Purpur)
-- **Linear region file format**, to save disk space
-- **Maintenance friendly**, integrating with [Sentry](https://sentry.io/welcome/) of [Pufferfish](https://github.com/pufferfish-gg/Pufferfish) to easily track all errors coming from your server in extreme detail
-- And more...
+Most general-purpose performance forks are not designed around the unusual demands of faction cannoning. Fuji brings together:
 
-## 📈 bStats
-[![bStats Graph Data](https://bstats.org/signatures/server-implementation/Leaf.svg)](https://bstats.org/plugin/server-implementation/Leaf)
+- **Cannoning mechanics:** Sakura-derived explosion, TNT, falling-block, and configurable cannon behavior, maintained as part of Fuji.
+- **Leaf's performance foundation:** Paper compatibility plus Moonrise, asynchronous optimizations, and other Leaf-integrated improvements.
+- **Multi-world options:** Leaf's optional parallel-world ticking can help separate independent worlds' workloads; it requires careful compatibility testing.
+- **PvP controls:** Fuji-specific, opt-in knockback and packet-flush settings intended for testing responsiveness without changing vanilla defaults.
 
-## 📫 Contact
-- Discord: [`https://discord.com/invite/gfgAwdSEuM`](https://discord.com/invite/gfgAwdSEuM)
-- QQ Group: `619278377`
+The goal is **cannoning-focused mechanics on a high-performance Paper fork**, not an automatic guarantee of cannon parity or lag-free raids.
 
-## 📫 Donation
-If you love our work, feel free to donate via our [Open Collective](https://opencollective.com/Winds-Studio) or [Dreeam's AFDIAN](https://afdian.com/a/Dreeam) :)
+## Heritage
 
-## 📥 Download
-Download Leaf from our [Website](https://www.leafmc.one/download) or get latest build in [GitHub Releases](https://github.com/Winds-Studio/Leaf/releases)
+```text
+Paper 26.3 → Leaf 26.3 ──────────────┐
+                                     ├── Fuji 26.3
+Sakura-derived / Fuji-maintained ────┘
+             cannoning patches
+```
 
-## 📄 Documentation
-Documentation about how to use/configure Leaf: [Leaf Docs](https://www.leafmc.one/docs/getting-started)
+Fuji is based on Leaf's 26.3 source and carries selected Sakura-derived and Fuji-maintained patches. The 26.3 port is not a claim that every Sakura patch from earlier Minecraft versions has been revalidated.
 
-## 📦 Building
-Building a JAR for distribution:
+## Features
+
+### 🎯 Cannoning
+
+- Sakura-derived configurable cannon mechanics and explosions
+- TNT and falling-block behavior relevant to wall-breaking, sand, and concrete cannon designs
+- World-specific cannon settings through `sakura-world.yml`
+- Specialized options for explosions, durable materials, and technical gameplay
+
+### ⚡ Performance
+
+- Leaf's Paper-based optimization stack, including the Moonrise chunk system
+- Optional asynchronous facilities, such as entity tracking and pathfinding
+- Configurable performance features; experimental options should be benchmarked before deployment
+
+### 🌏 Worlds and gameplay
+
+- Per-world configurations alongside Paper, Leaf, and other inherited configuration systems
+- Optional parallel-world ticking for workloads that are safe to separate
+- Fuji's opt-in melee knockback synchronization and immediate packet flush controls
+
+> **Cannoning note:** A faster entity-tracking or client-position update rate does not change server-side TNT physics. Validate cannon timings and movement separately from packet smoothness.
+
+## Building Fuji 26.3
+
+**Requirements:** JDK 25, Git, and the included Gradle wrapper.
+
+On Linux, macOS, or Git Bash:
+
 ```bash
-./gradlew applyAllPatches && ./gradlew createLeafclipJar
+git clone --branch 26.3 https://github.com/BadgersMC/Fuji.git
+cd Fuji
+./gradlew applyAllPatches
+./gradlew createLeafclipJar
 ```
 
+On Windows PowerShell, use `.\gradlew.bat` in place of `./gradlew`. Enabling Git/Windows long-path support may be necessary for Paperweight's deep source paths.
 
-## 📦 API
-<details>
-<summary>Click to expand</summary>
+The generated server JAR is expected under `leaf-server/build/libs/`. Run it with **Java 25**, accept the Minecraft EULA, and start with a disposable test world. Build task names are inherited from Leaf and may still use Leaf naming.
 
-### Gradle
-```kotlin
-repositories {
-  maven {
-    url = uri("https://maven.leafmc.one/snapshots/")
-  }
-}
+### Contributing patches
 
-dependencies {
-    compileOnly("cn.dreeam.leaf:leaf-api:26.3.local-SNAPSHOT")
-}
+Fuji uses the Paperweight patch workflow. Edit the applied sources, commit the change in the appropriate applied-source repository, then regenerate its patch channel with the matching Gradle rebuild task. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before modifying the tracker or other hot paths.
 
-java {
-  toolchain.languageVersion.set(JavaLanguageVersion.of(25))
-}
-```
+## Configuration
 
-### Maven
-```xml
-<repository>
-    <id>leafmc</id>
-    <url>https://maven.leafmc.one/snapshots/</url>
-</repository>
-```
-```xml
-<dependency>
-    <groupId>cn.dreeam.leaf</groupId>
-    <artifactId>leaf-api</artifactId>
-    <version>26.3.local-SNAPSHOT</version>
-    <scope>provided</scope>
-</dependency>
-```
-</details>
+Fuji includes configurations from its upstream projects. For cannon and PvP behavior, start with the generated **`sakura-world.yml`** for the relevant world.
 
-## ⚖️ License
-Leaf is licensed under various open source licenses from its upstream projects. See [LICENSE.md](LICENSE.md) for full details.
+The following **Fuji 26.3** knockback options are opt-in (shown as their configuration keys within the `players.knockback` section):
 
-## 📜 Credits
-Thanks to these projects below. Leaf includes some patches taken from them.<br>
-If these excellent projects hadn't existed, Leaf wouldn't have become great.
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `sync` | `false` | Attempt to compensate certain melee knockback timing cases |
+| `flush` | `false` | Immediately flush the final melee knockback packet |
 
-- [Gale](https://github.com/Dreeam-qwq/Gale) ([Original Repo](https://github.com/GaleMC/Gale))
-- [Pufferfish](https://github.com/pufferfish-gg/Pufferfish)
-- [Purpur](https://github.com/PurpurMC/Purpur)
-- <details>
-    <summary>🍴 Expand to see forks that Leaf takes patches from.</summary>
-    <p>
-      • <a href="https://github.com/KeYiMC/KeYi">KeYi</a> (R.I.P.)
-        <a href="https://github.com/MikuMC/KeYiBackup">(Backup)</a><br>
-      • <a href="https://github.com/etil2jz/Mirai">Mirai</a><br>
-      • <a href="https://github.com/Bloom-host/Petal">Petal</a><br>
-      • <a href="https://github.com/fxmorin/carpet-fixes">Carpet Fixes</a><br>
-      • <a href="https://github.com/Akarin-project/Akarin">Akarin</a><br>
-      • <a href="https://github.com/Cryptite/Slice">Slice</a><br>
-      • <a href="https://github.com/ProjectEdenGG/Parchment">Parchment</a><br>
-      • <a href="https://github.com/LeavesMC/Leaves">Leaves</a><br>
-      • <a href="https://github.com/KaiijuMC/Kaiiju">Kaiiju</a><br>
-      • <a href="https://github.com/PlazmaMC/PlazmaBukkit">Plazma</a><br>
-      • <a href="https://github.com/SparklyPower/SparklyPaper">SparklyPaper</a><br>
-      • <a href="https://github.com/HaHaWTH/Polpot">Polpot</a><br>
-      • <a href="https://github.com/plasmoapp/matter">Matter</a><br>
-      • <a href="https://github.com/LuminolMC/Luminol">Luminol</a><br>
-      • <a href="https://github.com/Gensokyo-Reimagined/Nitori">Nitori</a><br>
-      • <a href="https://github.com/Tuinity/Moonrise">Moonrise</a> (during 1.21.1)<br> 
-      • <a href="https://github.com/Samsuik/Sakura">Sakura</a><br> 
-    </p>
-</details>
+Other Sakura, Leaf, and Paper settings remain available according to the features in this branch. Do not copy an older version's full config into 26.3 without reviewing renamed or removed settings.
 
-## 🔥 Special Thanks
+## Project status
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <a href="https://cloud.swordsman.com.cn/?i8ab42c">
-        <img src="public/image/JiankeServer.jpg" alt="Jianke Cloud Host" width="250">
-      </a>
-      <br>
-      <b>cloud of swordsman | 剑客云</b>
-      <p>If you want to find a cheaper, high performance, stable, lower latency host, then cloud of swordsman is a good choice! Registers and purchases in <a href="https://cloud.swordsman.com.cn/?i8ab42c">here</a>.</p>
-      <p>如果你想找一个低价高性能、低延迟的云服务商，剑客云是个不错的选择！你可以在 <a href="https://cloud.swordsman.com.cn/?i8ab42c">这里</a> 注册。</p>
-    </td>
-    <td width="50%" align="center">
-      <a href="https://www.rainyun.com/NzE2NTc1_">
-        <img src="public/image/RainYun.jpg" alt="雨云" width="250">
-      </a>
-      <br>
-      <b>RainYun | 雨云</b>
-      <p>Global multi-line routing with cloud storage. Refund available within 7 days. Reliable uptime and expert support. RainYun — stable, cost-effective, and ready for fast cloud deployment. Visit <a href="https://www.rainyun.com/NzE2NTc1_">RainYun</a>.</p>
-      <p>国际多线路选择，配套云存储 — 购买服务后七天内不满意可以申请退订，强大的技术支持团队和高在线率客服。雨云云服务器，用稳定和性价比，助力您快速上云。点击前往 <a href="https://www.rainyun.com/NzE2NTc1_">雨云</a>。</p>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <a href="https://www.yourkit.com/">
-        <img src="https://www.yourkit.com/images/yklogo.png" alt="YourKit" width="300">
-      </a>
-      <p>YourKit supports open source projects with innovative and intelligent tools for monitoring and profiling Java and .NET applications. YourKit is the creator of <a href="https://www.yourkit.com/java/profiler/">YourKit Java Profiler</a>, <a href="https://www.yourkit.com/dotnet-profiler/">YourKit .NET Profiler</a>, and <a href="https://www.yourkit.com/youmonitor/">YourKit YouMonitor</a>.</p>
-    </td>
-  </tr>
-</table>
+**Fuji 26.3 is under active testing.** Booting a server and loading plugins are useful checks, but they do not by themselves prove combat parity, TNT timing accuracy, plugin compatibility, or stability under cannon loads.
+
+Before relying on a build, test repeated TNT shots, falling-block stacking, explosions in water, player knockback, entity visibility, saves/restarts, and your actual plugins on a separate server.
+
+## Credits
+
+Fuji builds on the work of:
+
+- [Leaf](https://github.com/Winds-Studio/Leaf) — performance-focused Paper fork
+- [Sakura](https://github.com/Samsuik/Sakura) — cannoning mechanics and inspiration
+- [Paper](https://github.com/PaperMC/Paper) — server and plugin-API foundation
+- [Gale](https://github.com/GaleMC/Gale), [Purpur](https://github.com/PurpurMC/Purpur), [Pufferfish](https://github.com/pufferfish-gg/Pufferfish), [Moonrise](https://github.com/Spottedleaf/Moonrise), and the many contributors whose work Leaf incorporates
+
+Please credit Leaf, Sakura, and the applicable original patch authors when distributing modified builds.
+
+## License
+
+Fuji inherits multiple open-source licenses from its upstream dependencies and individual patches. See [LICENSE.md](LICENSE.md) and the individual patch headers for the applicable terms. Server binaries are GPL-3.0-only as described in the current license file.
+
+---
+
+<p align="center"><sub>藤 — Leaf × Sakura · Minecraft 26.3</sub></p>
+\n
