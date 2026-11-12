@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Wed, 11 Nov 2026 14:05:16 -0500
+Subject: [PATCH] Allow configurable every-tick player movement tracking
+
+
+diff --git a/net/minecraft/server/level/ServerEntity.java b/net/minecraft/server/level/ServerEntity.java
+index 022010be9d74fbb28d9027c8a30b29d2156bc6f3..44cc4900f900767fc0d290009526ef9303ddc465 100644
+--- a/net/minecraft/server/level/ServerEntity.java
++++ b/net/minecraft/server/level/ServerEntity.java
+@@ -157,7 +157,9 @@ public class ServerEntity {
+             this.entity.syncPosition = false;
+         }
+ 
+-        if (this.forceStateResync || this.entity.needsSync || this.updateInterval.test(this.tickCount) || this.entity.getEntityData().isForeignDirty()) { // Slice - packet obfuscation and reductio // Paper - fix desync when a player is added to the tracker
++        if (this.forceStateResync || this.entity.needsSync || this.updateInterval.test(this.tickCount)
++            || (this.entity instanceof ServerPlayer && this.level.sakuraConfig().players.movementPacketIntervalTicks == 1) // Fuji - per-tick movement tracking for players only
++            || this.entity.getEntityData().isForeignDirty()) { // Slice - packet obfuscation and reductio // Paper - fix desync when a player is added to the tracker
+             byte yRotn = Mth.packDegrees(this.entity.getYRot());
+             byte xRotn = Mth.packDegrees(this.entity.getXRot());
+             boolean shouldSendRotation = Math.abs(yRotn - this.lastSentYRot) >= 1 || Math.abs(xRotn - this.lastSentXRot) >= 1; // Leaf - Multithreaded tracker - diff on change
+@@ -530,7 +532,9 @@ public class ServerEntity {
+             this.tickCount = this.updateInterval.nextInterval(this.tickCount);
+             input.syncPosition = false;
+         }
+-        if (force || this.entity.needsSync || this.updateInterval.test(this.tickCount) || this.entity.getEntityData().isDirty()) { // Paper - fix desync when a player is added to the tracker
++        if (force || this.entity.needsSync || this.updateInterval.test(this.tickCount)
++            || (this.entity instanceof ServerPlayer && this.level.sakuraConfig().players.movementPacketIntervalTicks == 1) // Fuji - per-tick movement tracking for players only
++            || this.entity.getEntityData().isDirty()) { // Paper - fix desync when a player is added to the tracker
+             byte yRotn = Mth.packDegrees(this.entity.getYRot());
+             byte xRotn = Mth.packDegrees(this.entity.getXRot());
+             boolean shouldSendRotation = Math.abs(yRotn - this.lastSentYRot) >= 1 || Math.abs(xRotn - this.lastSentXRot) >= 1;
