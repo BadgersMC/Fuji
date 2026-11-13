@@ -1,8 +1,7 @@
 package org.dreeam.leaf.world;
 
-import ca.spottedleaf.moonrise.patches.chunk_system.level.entity.EntityLookup;
 import io.papermc.paper.entity.activation.ActivationType;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -22,7 +21,7 @@ public final class EntityActivation {
     private static final ServerPlayer[] EMPTY_PLAYERS = {};
 
     private final ObjectArrayList<Entity> entityListCache = new ObjectArrayList<>();
-    private final LongOpenHashSet chunks = new LongOpenHashSet();
+    private final IntOpenHashSet seenEntityIds = new IntOpenHashSet();
     private final KDTree2D kdTree2 = new KDTree2D();
     private final KDTree3D kdTree3 = new KDTree3D();
 
@@ -64,8 +63,7 @@ public final class EntityActivation {
 
         final long currentTick = MinecraftServer.currentTick; // cast to long
         final ObjectArrayList<Entity> entities = this.entityListCache;
-        final LongOpenHashSet chunks = this.chunks;
-        final ca.spottedleaf.moonrise.patches.chunk_system.level.entity.EntityLookup lookup = ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel) world).moonrise$getEntityLookup();
+        final IntOpenHashSet seenEntityIds = this.seenEntityIds;
         final KDTree2D kdTree2 = this.kdTree2;
         final KDTree3D kdTree3 = this.kdTree3;
         final boolean tickMarkers = world.paperConfig().entities.markers.tick;
@@ -93,7 +91,7 @@ public final class EntityActivation {
 
         if (playerSize == 0) {
             entities.clear();
-            chunks.clear();
+            seenEntityIds.clear();
             return;
         }
 
@@ -102,7 +100,7 @@ public final class EntityActivation {
         if (dab) kdTree3.build(new double[][]{pxl, pyl, pzl}, indices);
 
         final double worldHeight = world.getHeight();
-        getEntities(world, players, playerSize, maxRange, worldHeight, lookup, chunks, entities);
+        getEntities(world, players, playerSize, maxRange, worldHeight, seenEntityIds, entities);
         final Object[] raw = entities.elements();
         final int size = entities.size();
 
@@ -122,7 +120,7 @@ public final class EntityActivation {
             );
         }
         entities.clear();
-        chunks.clear();
+        seenEntityIds.clear();
     }
 
     private static void activateEntities(int size, Object[] entities, boolean tickMarkers, long currentTick, double[] ranges, KDTree2D kdTree2, boolean dab, boolean dontEnableIfInWater, KDTree3D kdTree3, double startSq, double scale, int maxPriority) {
@@ -158,12 +156,16 @@ public final class EntityActivation {
         }
     }
 
-    private static void getEntities(ServerLevel world, ServerPlayer[] players, int playerSize, int maxRange, double worldHeight, EntityLookup lookup, LongOpenHashSet chunks, ObjectArrayList<Entity> entities) {
+    private static void getEntities(ServerLevel world, ServerPlayer[] players, int playerSize, int maxRange, double worldHeight, IntOpenHashSet seenEntityIds, ObjectArrayList<Entity> entities) {
         for (int k = 0; k < playerSize; k++) {
             final ServerPlayer player = players[k];
             final AABB box = player.getBoundingBox().inflate(maxRange, worldHeight, maxRange);
-            lookup.leaf$getEntities(box, chunks, entities);
-            ca.spottedleaf.moonrise.common.PlatformHooks.get().addToGetEntities(world, null, box, null, entities);
+            // Frontier 26.4 uses the native entity lookup rather than the legacy Moonrise chunk API.
+            for (final Entity entity : world.getEntities((Entity) null, box, ignored -> true)) {
+                if (seenEntityIds.add(entity.getId())) {
+                    entities.add(entity);
+                }
+            }
         }
     }
 }
