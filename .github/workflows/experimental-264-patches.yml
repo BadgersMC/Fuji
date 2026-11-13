@@ -1,0 +1,71 @@
+name: Fuji 26.4 experimental patch compatibility
+
+on:
+  push:
+    branches:
+      - experimental/frontier-paper-26.4-snapshot-8
+    paths:
+      - 'leaf-api/**'
+      - 'leaf-server/**'
+      - 'build.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/experimental-264-patches.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patch-compatibility:
+    name: Apply Fuji patches to Frontier Paper 26.4 Snapshot 8
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout experimental Fuji
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Configure local Git for Paperweight
+        run: |
+          git config --global user.name 'Fuji Experimental CI'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          chmod +x ./gradlew
+
+      - name: Install pinned Fuji Mache into Maven local
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --no-checkout https://github.com/BadgersMC/Fuji-Mache.git /tmp/fuji-mache
+          git -C /tmp/fuji-mache checkout 8ad2b02dd5f0d4e698182383ef5f227e0f9747f2
+          cd /tmp/fuji-mache
+          chmod +x ./gradlew
+          CI=false ./gradlew ':versions:v26_4-snapshot-8:publishToMavenLocal' --no-daemon --stacktrace --console=plain
+          test -f "$HOME/.m2/repository/io/papermc/mache/26.4-snapshot-8+build.local-SNAPSHOT/mache-26.4-snapshot-8+build.local-SNAPSHOT.zip"
+
+      - name: Apply Paperweight patch series (no compilation)
+        shell: bash
+        run: |
+          set +e
+          ./gradlew applyAllPatches --no-daemon --stacktrace --console=plain > patch-apply.log 2>&1
+          exitcode=$?
+          cat patch-apply.log
+          exit "$exitcode"
+
+      - name: Upload patch-application log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuji-264-patch-compatibility-log
+          path: patch-apply.log
+          if-no-files-found: warn
+          retention-days: 14
