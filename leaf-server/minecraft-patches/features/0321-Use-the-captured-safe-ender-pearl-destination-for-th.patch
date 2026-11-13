@@ -1,19 +1,27 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From aa87c814fbb514bb47580bf7ad2872b3ade81605 Mon Sep 17 00:00:00 2001
 From: BadgersMC <blrusso18@gmail.com>
-Date: Wed, 11 Nov 2026 08:01:27 -0500
+Date: Fri, 13 Nov 2026 15:42:12 -0500
 Subject: [PATCH] Use the captured safe ender pearl destination for the sound
 
+Frontier Paper 26.4 compatibility: use the actual result of the Bukkit-approved teleport (newOwner world/position), not the original pearl impact location. Original captured-safe position variable was removed by 26.4 flow; avoids sound playing in a different dimension if a plugin redirects the teleport. Source-only, no runtime parity tests.
+---
+ .../projectile/throwableitemprojectile/ThrownEnderpearl.java   | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
-index 96162889ddcaeb0eb667a8148599efe709b0ebda..d3472fddb8f293bacdfb0508aca7c5ac2d0772bd 100644
+index 3583087..8765dc6 100644
 --- a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
 +++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
-@@ -188,7 +188,7 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
-                             newOwner.hurtServer(taskPlayer.level(), this.damageSources().enderPearl().eventEntityDamager(this), this.level().purpurConfig.enderPearlDamage); // CraftBukkit // Paper - fix DamageSource API // Purpur - Configurable Ender Pearl damage
+@@ -140,7 +140,8 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+                             newOwner.hurtServer(player.level(), this.damageSources().enderPearl().eventEntityDamager(this), this.level().purpurConfig.enderPearlDamage); // CraftBukkit // Paper - fix DamageSource API // Purpur - Configurable Ender Pearl damage
                          }
  
 -                        this.playSound(level, teleportPos);
-+                        this.playSound(level, safeTeleportPos);
-                         return true;
-                         };
-                         if (org.dreeam.leaf.config.modules.async.SparklyPaperParallelWorldTicking.enabled) {
++                        // Fuji - use the actual Bukkit-approved teleport destination, including world changes.
++                        this.playSound(newOwner.level(), newOwner.position());
+                     }
+                 } else {
+                     Entity newOwner = owner.teleport(
+-- 
+2.39.1.windows.1
+
