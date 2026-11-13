@@ -11,7 +11,7 @@ if ([string]::IsNullOrWhiteSpace($MacheDirectory)) {
 }
 
 $repo = 'https://github.com/BadgersMC/Fuji-Mache.git'
-$pinnedCommit = '4cc6b8358ccd1a7fd5f7b524744ef1ff8daa649f'
+$pinnedCommit = '8ad2b02dd5f0d4e698182383ef5f227e0f9747f2'
 $version = '26.4-snapshot-8+build.local-SNAPSHOT'
 
 if (-not (Test-Path -LiteralPath $MacheDirectory)) {
