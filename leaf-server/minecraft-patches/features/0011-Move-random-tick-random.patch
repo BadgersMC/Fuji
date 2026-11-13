@@ -1,45 +1,19 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Martijn Muijsers <martijnmuijsers@live.nl>
-Date: Wed, 23 Nov 2022 16:53:40 +0100
+Date: Fri, 13 Nov 2026 07:11:31 -0500
 Subject: [PATCH] Move random tick random
 
-License: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
-Gale - https://galemc.org
+License: GPL-3.0-only; original Gale/Pufferfish patch. Frontier Paper 26.4 no longer has the old ServerLevel simpleRandom field. Expose a per-world RandomSource for the following optimized lightning counter patch.
 
-This patch is based on the following patch:
-"Move ThreadUnsafeRandom Initialization"
-By: Kevin Raneri <kevin.raneri@gmail.com>
-As part of: Pufferfish (https://github.com/pufferfish-gg/Pufferfish)
-Licensed under: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
-
-* Pufferfish description *
-
-ThreadUnsafeRandom is initialized too late and some of our patches
-require it to be initialized earlier. By moving it to the superclass, we
-initialize it earlier, ensuring that it is available sooner.
-
-diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 42d507026c73cd0ae65b18271e0e0070f8ff6681..5dd2c0879dcfe01075eac166d75e87f4919eb456 100644
---- a/net/minecraft/server/level/ServerLevel.java
-+++ b/net/minecraft/server/level/ServerLevel.java
-@@ -987,8 +987,6 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
-     }
- 
-     // Paper start - optimise random ticking
--    private final ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom simpleRandom = new ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom(net.minecraft.world.level.levelgen.RandomSupport.generateUniqueSeed());
--
-     private void optimiseRandomTick(final LevelChunk chunk, final int tickSpeed) {
-         final LevelChunkSection[] sections = chunk.getSections();
-         final int minSection = ca.spottedleaf.moonrise.common.util.WorldUtil.getMinSection((ServerLevel)(Object)this);
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 812f72226fc06ee4cecb4ca11b343d3bdd7e7a6b..6cb12186641009c1120efafeea83816c4bc23a3a 100644
+index 93dfc9904cce02f81b6d60b41ef4f02053384807..bba3ed8d202122f7d9a905641b28c932bc0613f5 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
-@@ -181,6 +181,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+@@ -169,6 +169,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
      public static @Nullable BlockPos lastPhysicsProblem; // Spigot
      public final Map<ServerExplosion.CacheKey, Float> explosionDensityCache = new java.util.HashMap<>(); // Paper - Optimize explosions
      public java.util.ArrayDeque<net.minecraft.world.level.block.RedstoneTorchBlock.Toggle> redstoneUpdateInfos; // Paper - Faster redstone torch rapid clock removal; Move from Map in BlockRedstoneTorch to here
-+    public final ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom simpleRandom = new ca.spottedleaf.moonrise.common.util.SimpleThreadUnsafeRandom(net.minecraft.world.level.levelgen.RandomSupport.generateUniqueSeed()); // Gale - Pufferfish - move random tick random
++    public final net.minecraft.util.RandomSource simpleRandom = net.minecraft.util.RandomSource.create(); // Gale / Pufferfish - per-world RNG for fast chunk tick scheduling
  
      // Purpur start - Add adjustable breeding cooldown to config
      private com.google.common.cache.Cache<BreedingCooldownPair, Object> playerBreedingCooldowns;

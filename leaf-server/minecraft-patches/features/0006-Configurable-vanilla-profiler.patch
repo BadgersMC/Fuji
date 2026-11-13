@@ -39,10 +39,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index bf5bf3d2a03401a8d7ac91b91b43cc9df0185f47..9acea270aa71b3ba3891588537434061d2cad48b 100644
+index 340dee2594f96866e6b39994d2a137d52f57d1f5..b321c3d3fb10d07702feab7635db55e3f7bb1bd7 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1357,7 +1357,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1239,7 +1239,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
  
                  // Paper - improve tick loop - done above
  
@@ -52,10 +52,10 @@ index bf5bf3d2a03401a8d7ac91b91b43cc9df0185f47..9acea270aa71b3ba3891588537434061
                      ProfilerFiller profiler = Profiler.get();
                      profiler.push("nextTickWait");
 diff --git a/net/minecraft/server/ReloadableServerResources.java b/net/minecraft/server/ReloadableServerResources.java
-index 4b7cb2ba2e1f05d73768e62bb93cd129514166d0..49c1b41143b99da4d72ff8e239b99c6c047132ba 100644
+index de88bb4667e5536196aea3eca4e531a2856fc39e..53d56d0fe10a64d2ef3e7e94e61fa4d0bc4eb8fe 100644
 --- a/net/minecraft/server/ReloadableServerResources.java
 +++ b/net/minecraft/server/ReloadableServerResources.java
-@@ -112,7 +112,7 @@ public class ReloadableServerResources {
+@@ -115,7 +115,7 @@ public class ReloadableServerResources {
                                      backgroundExecutor,
                                      mainThreadExecutor,
                                      DATA_RELOAD_INITIAL_TASK,
@@ -65,10 +65,10 @@ index 4b7cb2ba2e1f05d73768e62bb93cd129514166d0..49c1b41143b99da4d72ff8e239b99c6c
                                  .done()
                                  .thenApply(ignore -> result);
 diff --git a/net/minecraft/server/commands/DebugCommand.java b/net/minecraft/server/commands/DebugCommand.java
-index 812659bc14a356bde510d245557f94746bc576cc..f665f112ab278c786403d98fc206d6752fd4de1f 100644
+index 830a83ac505d993be5718697ff820abfd6b56c49..f834aba61d1a73def21651c06670053766c038a5 100644
 --- a/net/minecraft/server/commands/DebugCommand.java
 +++ b/net/minecraft/server/commands/DebugCommand.java
-@@ -71,6 +71,7 @@ public class DebugCommand {
+@@ -72,6 +72,7 @@ public class DebugCommand {
      }
  
      private static int start(final CommandSourceStack source) throws CommandSyntaxException {
@@ -76,7 +76,7 @@ index 812659bc14a356bde510d245557f94746bc576cc..f665f112ab278c786403d98fc206d675
          MinecraftServer server = source.getServer();
          if (server.isTimeProfilerRunning()) {
              throw ERROR_ALREADY_RUNNING.create();
-@@ -82,6 +83,7 @@ public class DebugCommand {
+@@ -83,6 +84,7 @@ public class DebugCommand {
      }
  
      private static int stop(final CommandSourceStack source) throws CommandSyntaxException {
@@ -84,7 +84,7 @@ index 812659bc14a356bde510d245557f94746bc576cc..f665f112ab278c786403d98fc206d675
          MinecraftServer server = source.getServer();
          if (!server.isTimeProfilerRunning()) {
              throw ERROR_NOT_RUNNING.create();
-@@ -99,6 +101,21 @@ public class DebugCommand {
+@@ -100,6 +102,21 @@ public class DebugCommand {
          return (int)tps;
      }
  
@@ -107,10 +107,10 @@ index 812659bc14a356bde510d245557f94746bc576cc..f665f112ab278c786403d98fc206d675
          extends CustomCommandExecutor.WithErrorHandling<CommandSourceStack>
          implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {
 diff --git a/net/minecraft/server/commands/PerfCommand.java b/net/minecraft/server/commands/PerfCommand.java
-index f881d6c20487569c0408fbb33e5d9d09363d7cbc..767c812271672271123446265b6ee75f2725ae88 100644
+index 8638a35517686bb18a256626858026884fcc6efe..6c0c3a214ca74354f2cb13e0b6f86f84f1bdaca3 100644
 --- a/net/minecraft/server/commands/PerfCommand.java
 +++ b/net/minecraft/server/commands/PerfCommand.java
-@@ -42,6 +42,7 @@ public class PerfCommand {
+@@ -43,6 +43,7 @@ public class PerfCommand {
      }
  
      private static int startProfilingDedicatedServer(final CommandSourceStack source) throws CommandSyntaxException {
@@ -118,7 +118,7 @@ index f881d6c20487569c0408fbb33e5d9d09363d7cbc..767c812271672271123446265b6ee75f
          MinecraftServer server = source.getServer();
          if (server.isRecordingMetrics()) {
              throw ERROR_ALREADY_RUNNING.create();
-@@ -55,6 +56,7 @@ public class PerfCommand {
+@@ -56,6 +57,7 @@ public class PerfCommand {
      }
  
      private static int stopProfilingDedicatedServer(final CommandSourceStack source) throws CommandSyntaxException {
@@ -127,7 +127,7 @@ index f881d6c20487569c0408fbb33e5d9d09363d7cbc..767c812271672271123446265b6ee75f
          if (!server.isRecordingMetrics()) {
              throw ERROR_NOT_RUNNING.create();
 diff --git a/net/minecraft/server/packs/resources/ReloadableResourceManager.java b/net/minecraft/server/packs/resources/ReloadableResourceManager.java
-index 2bccd6a2ade7e5d2bda6f031202700f9811b8f01..222c7d3c88fba00eaead059425e2be2a7983d5e1 100644
+index 433a72f01d8d059ce6130f7c239f913a72fe18f2..3a4794e1d13dfd9a365dbb22aa1db175cb635f64 100644
 --- a/net/minecraft/server/packs/resources/ReloadableResourceManager.java
 +++ b/net/minecraft/server/packs/resources/ReloadableResourceManager.java
 @@ -45,7 +45,7 @@ public class ReloadableResourceManager implements AutoCloseable, ResourceManager

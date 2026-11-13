@@ -5,10 +5,10 @@ Subject: [PATCH] Leaf Commands
 
 
 diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
-index 18916fd932b815cde43245bce0394d2d0061374b..5720bf7133f7a7fe81993e70f178fc0675bcde40 100644
+index c408714769a7c12e09b1dca8abf35ef41fdeb1b7..d1751286a353ec34c4e323db6d72275bc0adf53f 100644
 --- a/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -264,6 +264,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -267,6 +267,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          }
          org.purpurmc.purpur.PurpurConfig.registerCommands();
          // Purpur end - Purpur config files

@@ -1,103 +1,50 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Martijn Muijsers <martijnmuijsers@live.nl>
-Date: Wed, 23 Nov 2022 16:45:45 +0100
+Date: Fri, 13 Nov 2026 07:12:28 -0500
 Subject: [PATCH] Optimize random calls in chunk ticking
 
-License: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
-Gale - https://galemc.org
-
-This patch is based on the following patch:
-"Optimize random calls in chunk ticking"
-By: Paul Sauve <paul@technove.co>
-As part of: Airplane (https://github.com/TECHNOVE/Airplane)
-Licensed under: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
-
-The patch also received the following subsequent modification:
-By: Kevin Raneri <kevin.raneri@gmail.com>
-As part of: Pufferfish (https://github.com/pufferfish-gg/Pufferfish)
-Licensed under: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
-
-* Description *
-
-Throttling of ice and snow tick has been moved to another patch as
-configurable ice and snow tick chance.
-
-* Airplane description *
-
-Especially at over 30,000 chunks these random calls are fairly heavy. We
-use a different method here for checking lightning, and for checking
-ice.
-
-Lightning: Each chunk now keeps an int of how many ticks until the
-lightning should strike. This int is a random number from 0 to 100000 * 2,
-the multiplication is required to keep the probability the same.
-
-Ice and snow: We just generate a single random number 0-16 and increment
-it, while checking if it's 0 for the current chunk.
-
-Depending on configuration for things that tick in a chunk, this is a
-5-10% improvement.
-
-* Airplane copyright *
-
-Airplane
-Copyright (C) 2020 Technove LLC
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+License: GPL-3.0-only; original Gale / Airplane patch, including Pufferfish modifications. Migrate lightning scheduling into Frontier Paper 26.4 ServerLevel.tickThunder and LevelChunk while maintaining weather checks.
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 1f456511bddc33a48ab96ac17d61093a9c76b112..f7ac4e999fc81beeabfeccfa8dc650230168ac3d 100644
+index 8486e2b21a429da633d4152dfa4d0e86f20d5c8f..659374538b3cb3031d9a21509f97d39cde8204f7 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -1067,7 +1067,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -783,7 +783,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
          int minZ = chunkPos.getMinBlockZ();
          ProfilerFiller profiler = Profiler.get();
          profiler.push("thunder");
 -        if (!this.paperConfig().environment.disableThunder && raining && this.isThundering() && this.spigotConfig.thunderChance > 0 && this.random.nextInt(this.spigotConfig.thunderChance) == 0) { // Spigot // Paper - Option to disable thunder
-+        if (!this.paperConfig().environment.disableThunder && raining && this.isThundering() && this.spigotConfig.thunderChance > 0 /*&& this.random.nextInt(this.spigotConfig.thunderChance) == 0*/ && chunk.shouldDoLightning(this.random)) { // Spigot // Paper - Option to disable thunder // Gale - Airplane - optimize random calls in chunk ticking - replace random with shouldDoLightning
++        if (!this.paperConfig().environment.disableThunder && raining && this.isThundering() && this.spigotConfig.thunderChance > 0 && chunk.shouldDoLightning(this.random)) { // Spigot // Paper - Option to disable thunder // Gale - optimize random lightning checks
              BlockPos pos = this.findLightningTargetAround(this.getBlockRandomPos(minX, 0, minZ, 15));
              if (this.isRainingAt(pos)) {
                  DifficultyInstance difficulty = this.getCurrentDifficultyAt(pos);
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 76dae652c910e36c860791a8285bd9fee466d5b9..e33eb42e26ab71b83976c3e24f37c110de979606 100644
+index ea189e8735fa8572705f71f9fbd7f760a00c499c..b78c48cd2c35c4e414b18cd4994f02b90668a3d1 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
-@@ -140,6 +140,18 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
-     }
-     // Paper end - get block chunk optimisation
- 
-+    // Gale start - Airplane - optimize random calls in chunk ticking - instead of using a random every time the chunk is ticked, define when lightning strikes preemptively
+@@ -87,6 +87,17 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource {
+     private final Map<BlockPos, LevelChunk.RebindableTickingBlockEntityWrapper> tickersInLevel = new HashMap<>();
+     private boolean loaded;
+     private final ServerLevel level; // CraftBukkit - type
++    // Gale / Airplane - schedule lightning checks without a per-tick RNG call.
 +    private int lightningTick;
-+    // shouldDoLightning compiles down to 29 bytes, which with the default of 35 byte inlining should guarantee an inline
-+    public final boolean shouldDoLightning(net.minecraft.util.RandomSource random) {
-+        if (this.lightningTick-- <= 0) {
++
++    public final boolean shouldDoLightning(final net.minecraft.util.RandomSource random) {
++        if (--this.lightningTick <= 0) {
 +            this.lightningTick = random.nextInt(this.level.spigotConfig.thunderChance) << 1;
 +            return true;
 +        }
 +        return false;
 +    }
-+    // Gale end - Airplane - optimize random calls in chunk ticking - instead of using a random every time the chunk is ticked, define when lightning strikes preemptively
 +
-     public LevelChunk(final Level level, final ChunkPos pos) {
-         this(level, pos, UpgradeData.EMPTY, new LevelChunkTicks<>(), new LevelChunkTicks<>(), 0L, null, null, null);
-     }
-@@ -176,6 +188,8 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
-         this.debug = !empty && this.level.isDebug();
-         this.defaultBlockState = empty ? VOID_AIR_BLOCKSTATE : AIR_BLOCKSTATE;
-         // Paper end - get block chunk optimisation
-+
-+        this.lightningTick = this.level.simpleRandom.nextInt(100000) << 1; // Gale - Airplane - optimize random calls in chunk ticking - initialize lightning tick
-     }
+     private @Nullable Supplier<FullChunkStatus> fullStatus;
+     private LevelChunk.@Nullable PostLoadProcessor postLoad;
+     private final Int2ObjectMap<GameEventListenerRegistry> gameEventListenerRegistrySections;
+@@ -119,6 +130,7 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource {
+     ) {
+         super(pos, upgradeData, level, level.palettedContainerFactory(), inhabitedTime, sections, blendingData);
+         this.level = (ServerLevel) level; // CraftBukkit - type
++        this.lightningTick = this.level.simpleRandom.nextInt(100000) << 1; // Gale / Airplane - initial lightning tick
+         this.gameEventListenerRegistrySections = new Int2ObjectOpenHashMap<>();
  
-     public LevelChunk(final ServerLevel level, final ProtoChunk protoChunk, final LevelChunk.@Nullable PostLoadProcessor postLoad) {
+         for (Heightmap.Types type : Heightmap.Types.values()) {
