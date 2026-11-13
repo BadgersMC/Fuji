@@ -1,31 +1,24 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From 7667a2aaada8705f1d3d8e0497de3a591d467919 Mon Sep 17 00:00:00 2001
 From: Dreeam <61569423+Dreeam-qwq@users.noreply.github.com>
-Date: Tue, 17 Sep 2024 02:35:13 -0400
+Date: Fri, 13 Nov 2026 15:22:37 -0500
 Subject: [PATCH] Replace Entity active effects map with optimized collection
 
+Frontier 26.4 safe subset: reuse active-effect values view across particle and ambient updates. Keep default map implementation until benchmarks and Bukkit API threading review. Original Leaf optimization author Dreeam.
+---
+ net/minecraft/world/entity/LivingEntity.java | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index 34e46c2577803620add16e46cfcb1ce102a88e4e..ff551a42b6e452a5454a8d07ef9f4b2f8b80e4a3 100644
+index 355978b..9f8e5bb 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -235,6 +235,10 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
-     };
-     private final AttributeMap attributes;
-     public CombatTracker combatTracker = new CombatTracker(this);
-+    // Need to figure out the difference of mem access pattern between hash map and obj2obj hash map (separate chaining vs open addressing)
-+    // Benchmark is needed for get calls for this active effects map.
-+    // Also need to check whether call from out of main using bukkit api
-+    //public final Map<Holder<MobEffect>, MobEffectInstance> activeEffects = new it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap<>(0); // Leaf - Replace Entity active effects map with optimized collection
-     private final Map<Holder<MobEffect>, MobEffectInstance> activeEffects = Maps.newHashMap();
-     private final Map<EquipmentSlot, ItemStack> lastEquipmentItems = Util.makeEnumMap(EquipmentSlot.class, slot -> ItemStack.EMPTY);
-     private final LivingEntity.SwingState swingState = new LivingEntity.SwingState();
-@@ -1026,14 +1030,15 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -1020,14 +1020,15 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
      private void updateSynchronizedMobEffectParticles() {
          // Leaf start - Remove stream in entity visible effects filter
          List<ParticleOptions> visibleEffectParticles = new java.util.ArrayList<>();
 -        for (MobEffectInstance effect : this.activeEffects.values()) {
-+        final Collection<MobEffectInstance> effectsValues = this.activeEffects.values(); // Leaf - Replace Entity active effects map with optimized collection
-+        for (MobEffectInstance effect : effectsValues) { // Leaf - Replace Entity active effects map with optimized collection
++        final Collection<MobEffectInstance> effectsValues = this.activeEffects.values(); // Leaf - reuse the collection view
++        for (MobEffectInstance effect : effectsValues) {
              if (effect.isVisible()) {
                  visibleEffectParticles.add(effect.getParticleOptions());
              }
@@ -33,7 +26,10 @@ index 34e46c2577803620add16e46cfcb1ce102a88e4e..ff551a42b6e452a5454a8d07ef9f4b2f
          // Leaf end - Remove stream in entity visible effects filter
          this.entityData.set(DATA_EFFECT_PARTICLES, visibleEffectParticles);
 -        this.entityData.set(DATA_EFFECT_AMBIENCE_ID, areAllEffectsAmbient(this.activeEffects.values()));
-+        this.entityData.set(DATA_EFFECT_AMBIENCE_ID, areAllEffectsAmbient(effectsValues)); // Leaf - Replace Entity active effects map with optimized collection
++        this.entityData.set(DATA_EFFECT_AMBIENCE_ID, areAllEffectsAmbient(effectsValues));
      }
  
      private void updateGlowingStatus() {
+-- 
+2.39.1.windows.1
+

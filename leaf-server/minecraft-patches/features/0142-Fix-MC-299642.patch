@@ -1,30 +1,35 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From 514da68dfcd43e03e8d6af2baca437365ca8257a Mon Sep 17 00:00:00 2001
 From: HaHaWTH <102713261+HaHaWTH@users.noreply.github.com>
-Date: Tue, 9 Nov 2077 00:00:00 +0800
+Date: Fri, 13 Nov 2026 15:25:45 -0500
 Subject: [PATCH] Fix MC-299642
 
-Related MC issue: https://bugs.mojang.com/browse/MC/issues/MC-299642
-
-Minecraft uses 3D movement control for turtles to move in water, which makes them fall even NoGravity tag is set to true.
-This direct manipulation of deltaMovement bypasses the standard move logic where the NoGravity tag is checked and applied.
+Frontier 26.4 adapts NoGravity turtle movement fix to current addDeltaMovement API, preserving Purpur rideable controls.
+---
+ net/minecraft/world/entity/animal/turtle/Turtle.java | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/net/minecraft/world/entity/animal/turtle/Turtle.java b/net/minecraft/world/entity/animal/turtle/Turtle.java
-index 0c56ca0ea4692fdbf2d1311a8bf8651bf0d561af..d1edd97b879333a9fee4e4e9ea3f3f6af39006af 100644
+index 0e22182..ac23ca4 100644
 --- a/net/minecraft/world/entity/animal/turtle/Turtle.java
 +++ b/net/minecraft/world/entity/animal/turtle/Turtle.java
-@@ -574,9 +574,15 @@ public class Turtle extends Animal {
+@@ -574,9 +574,14 @@ public class Turtle extends Animal {
                      float yRotD = (float)(Mth.atan2(zd, xd) * 180.0F / (float)Math.PI) - 90.0F;
                      this.mob.setYRot(this.rotlerp(this.mob.getYRot(), yRotD, 90.0F));
                      this.mob.yBodyRot = this.mob.getYRot();
-+                    // Leaf start - Fix MC-299642
+-                    float targetSpeed = (float)(this.getSpeedModifier() * this.mob.getAttributeValue(Attributes.MOVEMENT_SPEED)); // Purpur - Ridables
+-                    this.mob.setSpeed(Mth.lerp(0.125F, this.mob.getSpeed(), targetSpeed));
+-                    this.mob.addDeltaMovement(0.0, this.mob.getSpeed() * yd * 0.1, 0.0);
++                    // Leaf - MC-299642: avoid bypassing NoGravity with ground/air movement control.
 +                    if (!this.mob.isNoGravity() || this.mob.isInWater()) {
-                     float targetSpeed = (float)(this.getSpeedModifier() * this.mob.getAttributeValue(Attributes.MOVEMENT_SPEED)); // Purpur - Ridables
-                     this.mob.setSpeed(Mth.lerp(0.125F, this.mob.getSpeed(), targetSpeed));
-                     this.mob.setDeltaMovement(this.mob.getDeltaMovement().add(0.0, this.mob.getSpeed() * yd * 0.1, 0.0));
++                        float targetSpeed = (float)(this.getSpeedModifier() * this.mob.getAttributeValue(Attributes.MOVEMENT_SPEED)); // Purpur - Ridables
++                        this.mob.setSpeed(Mth.lerp(0.125F, this.mob.getSpeed(), targetSpeed));
++                        this.mob.addDeltaMovement(0.0, this.mob.getSpeed() * yd * 0.1, 0.0);
 +                    } else {
 +                        this.mob.setSpeed(0.0F);
 +                    }
-+                    // Leaf end - Fix MC-299642
                  }
              } else {
                  this.mob.setSpeed(0.0F);
+-- 
+2.39.1.windows.1
+

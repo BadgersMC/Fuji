@@ -14,11 +14,21 @@ public class SecureSeed extends ConfigModule {
     @Override
     public void onLoaded() {
         globalConfig.addCommentRegionBased(basePath(), """
-                Once you enable secure seed, all ores and structures are generated with 1024-bit seed
-                instead of using 64-bit seed in vanilla, made seed cracker become impossible.""",
+                Fuji Frontier 26.4 experimental: secure seed is NOT available yet.
+                Setting enabled=true emits an error and is ignored to preserve vanilla world generation.
+                Do not rely on this option for 1024-bit seed protection.""",
             """
                 安全种子开启后, 所有矿物与结构都将使用1024位的种子进行生成, 无法被破解.""");
 
-        enabled = globalConfig.getBoolean(basePath() + ".enabled", enabled);
+        final boolean requested = globalConfig.getBoolean(basePath() + ".enabled", false);
+        // The old Matter patch has unported 26.4 worldgen hooks and shared global seed state.
+        // Never claim 1024-bit protection or change terrain generation with a partial implementation.
+        if (requested) {
+            org.dreeam.leaf.config.LeafConfig.LOGGER.error(
+                "Fuji Frontier 26.4: secure-seed.enabled=true is unsupported. " +
+                "Secure Seed is DISABLED; world generation remains vanilla. Do not use this as seed protection."
+            );
+        }
+        enabled = false;
     }
 }
