@@ -21,26 +21,14 @@ track:
 // SYNC SOURCE END
 
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index a9eca4018a31dddeae4da85088097eb49e45ca06..3f554b998df6811f81e6825f274775765e9aab42 100644
+index b71a9a5f85d4560528b9a7b011354705cb4cd68f..c6260a4f4f0a5dade738e25e48c8cc52e6b2b3b5 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -576,10 +576,9 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -561,6 +561,7 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
      }
  
-     protected void tryAddFrost() {
--        if (!this.getBlockStateOnLegacy().isAir()) {
-             int ticksFrozen = this.getTicksFrozen();
-             if (ticksFrozen > 0) {
--                AttributeInstance speed = this.getAttribute(Attributes.MOVEMENT_SPEED);
-+                AttributeInstance speed = this.getBlockStateOnLegacy().isAir() ? null : this.getAttribute(Attributes.MOVEMENT_SPEED); // Gale - Lithium - check frozen ticks before landing block
-                 if (speed == null) {
-                     return;
-                 }
-@@ -587,7 +586,6 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
-                 float slowAmount = -0.05F * this.getPercentFrozen();
-                 speed.addTransientModifier(new AttributeModifier(SPEED_MODIFIER_POWDER_SNOW_ID, slowAmount, AttributeModifier.Operation.ADD_VALUE));
-             }
--        }
-     }
- 
-     protected void onChangedBlock(final ServerLevel level, final BlockPos pos) {
+     private void updateFrozenEffectMovementSpeedPenalty() {
++        // Gale - Lithium: 26.4 already checks frozen ticks without the removed legacy block-state lookup.
+         AttributeInstance speed = this.getAttribute(Attributes.MOVEMENT_SPEED);
+         if (speed != null) {
+             if (this.getTicksFrozen() > 0) {

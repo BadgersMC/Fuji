@@ -13,20 +13,19 @@ As part of: Slice (https://github.com/Cryptite/Slice)
 Licensed under: MIT (https://opensource.org/licenses/MIT)
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index a7bfa1c8137c2740d181fa90dacbaddeeef91b3e..8c4c6be054dee5444ad51525a394dc4e09561b6c 100644
+index 39581e3ca1539aad87625bc490bb13f72367b84d..dce76428c9a12aea2732798113b803cde8544c54 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -990,7 +990,13 @@ public abstract class Entity
- 
+@@ -1021,7 +1021,11 @@ public abstract class Entity
+         if (!this.isInLava()) this.lastLavaContact = null; // Paper - clear stale lava damager
          this.checkBelowWorld();
          if (!this.level().isClientSide()) {
-+            // Gale start - Slice - hide flames on entities with fire resistance
-+            if (this instanceof net.minecraft.world.entity.LivingEntity livingEntity) {
-+                this.setSharedFlagOnFire(this.remainingFireTicks > 0 && (!this.level.galeConfig().gameplayMechanics.hideFlamesOnEntitiesWithFireResistance || !livingEntity.hasEffect(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE)));
-+            } else {
-+            // Gale end - Slice - hide flames on entities with fire resistance
-             this.setSharedFlagOnFire(this.remainingFireTicks > 0);
-+            } // Gale - Slice - hide flames on entities with fire resistance
+-            this.setSharedFlagOnFire(this.remainingFireTicks > 0);
++            // Gale - Slice: optionally suppress visual flames when an entity has fire resistance.
++            final boolean hideFlames = this instanceof LivingEntity livingEntity
++                && this.level().galeConfig().gameplayMechanics.hideFlamesOnEntitiesWithFireResistance
++                && livingEntity.hasEffect(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE);
++            this.setSharedFlagOnFire(this.remainingFireTicks > 0 && !hideFlames);
          }
  
          this.firstTick = false;

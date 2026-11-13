@@ -13,10 +13,10 @@ As part of: EmpireCraft (https://github.com/starlis/empirecraft)
 Licensed under: MIT (https://opensource.org/licenses/MIT)
 
 diff --git a/net/minecraft/stats/ServerStatsCounter.java b/net/minecraft/stats/ServerStatsCounter.java
-index f5beb001b938072e78c0ead7e0ad0499784ed1cf..eb40f1bdab68d51047df702a0e4ad8a7931a134f 100644
+index cb7161f532af532d2c0aafd6534b4b095891d609..febfcabbbd907cfd8ddea19d97f2f36112bfc91b 100644
 --- a/net/minecraft/stats/ServerStatsCounter.java
 +++ b/net/minecraft/stats/ServerStatsCounter.java
-@@ -121,7 +121,7 @@ public class ServerStatsCounter extends StatsCounter {
+@@ -115,7 +115,7 @@ public class ServerStatsCounter extends StatsCounter {
          this.stats
              .putAll(
                  STATS_CODEC.parse(data.get("stats").orElseEmptyMap())

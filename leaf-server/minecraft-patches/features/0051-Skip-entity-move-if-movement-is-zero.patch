@@ -21,10 +21,10 @@ track:
 // SYNC SOURCE END
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index aad07b922fa0fecab44a4a572918eae1da47c259..0f94e65db70c63f6bf3ca62c00f3fec9016c7ea4 100644
+index ed9de86960adf0da61e3a1a4d65924d8a500ccd3..39581e3ca1539aad87625bc490bb13f72367b84d 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -285,6 +285,7 @@ public abstract class Entity
+@@ -325,6 +325,7 @@ public abstract class Entity
      public float yRotO;
      public float xRotO;
      private AABB bb = INITIAL_AABB;
@@ -32,7 +32,7 @@ index aad07b922fa0fecab44a4a572918eae1da47c259..0f94e65db70c63f6bf3ca62c00f3fec9
      public boolean onGround;
      public boolean horizontalCollision;
      public boolean verticalCollision;
-@@ -1158,7 +1159,7 @@ public abstract class Entity
+@@ -1189,7 +1190,7 @@ public abstract class Entity
      public void setOnGroundWithMovement(final boolean onGround, final boolean horizontalCollision, final Vec3 movement) {
          this.onGround = onGround;
          this.horizontalCollision = horizontalCollision;
@@ -41,7 +41,7 @@ index aad07b922fa0fecab44a4a572918eae1da47c259..0f94e65db70c63f6bf3ca62c00f3fec9
      }
  
      public boolean isSupportedBy(final BlockPos pos) {
-@@ -1256,6 +1257,20 @@ public abstract class Entity
+@@ -1287,6 +1288,20 @@ public abstract class Entity
              }
              // Paper end
  
@@ -62,7 +62,7 @@ index aad07b922fa0fecab44a4a572918eae1da47c259..0f94e65db70c63f6bf3ca62c00f3fec9
              delta = this.maybeBackOffFromEdge(delta, moverType);
              Vec3 movement = this.collide(delta);
              double movementLength = movement.lengthSqr();
-@@ -1286,7 +1301,7 @@ public abstract class Entity
+@@ -1307,7 +1322,7 @@ public abstract class Entity
              if (movedVertically || this.isLocalInstanceAuthoritative()) {
                  this.verticalCollision = delta.y != movement.y;
                  this.verticalCollisionBelow = this.verticalCollision && delta.y < 0.0;
@@ -71,7 +71,7 @@ index aad07b922fa0fecab44a4a572918eae1da47c259..0f94e65db70c63f6bf3ca62c00f3fec9
              }
  
              if (this.horizontalCollision) {
-@@ -4804,6 +4819,20 @@ public abstract class Entity
+@@ -4716,6 +4731,20 @@ public abstract class Entity
      }
  
      public final void setBoundingBox(final AABB bb) {

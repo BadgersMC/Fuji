@@ -27,10 +27,10 @@ track:
 // SYNC SOURCE END
 
 diff --git a/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java b/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
-index f0529d233b791e226cec469b2efebcffd02c6d58..ff328b5435e4e5ca148680d912078b939927aa79 100644
+index f81cbee2eaf29439fd468bcaa572bc5afab74855..644f2010cb6fb1e7bbcc16f10939fe44c552df2a 100644
 --- a/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
 +++ b/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
-@@ -69,6 +69,7 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
+@@ -56,6 +56,7 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
      private static final DecimalFormat DEBUG_DENSITY_FORMAT = new DecimalFormat("0.000", DecimalFormatSymbols.getInstance(Locale.ROOT));
      private final Holder<NoiseGeneratorSettings> settings;
      private final Supplier<Aquifer.FluidPicker> globalFluidPicker;
@@ -38,7 +38,7 @@ index f0529d233b791e226cec469b2efebcffd02c6d58..ff328b5435e4e5ca148680d912078b93
  
      public NoiseBasedChunkGenerator(final BiomeSource biomeSource, final Holder<NoiseGeneratorSettings> settings) {
          super(biomeSource);
-@@ -500,7 +501,12 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
+@@ -318,7 +319,12 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
  
      @Override
      public int getSeaLevel() {

@@ -1,4 +1,4 @@
-From 9af3c80403dbecc9586b334bde54a7a4279c6150 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Dreeam <61569423+Dreeam-qwq@users.noreply.github.com>
 Date: Fri, 13 Nov 2026 07:28:30 -0500
 Subject: [PATCH] Do not log invalid flatten text component parse

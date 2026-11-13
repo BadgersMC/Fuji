@@ -13,10 +13,10 @@ As part of: SportPaper (https://github.com/Electroid/SportPaper)
 Licensed under: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 9e3e21d4c0e7845aaab1e5fd22557b33b0e0c452..58337f140ad3da9c2cfde216470e5323ed870a15 100644
+index e396889e43a79d20ddd0eb1d6fc093909c03e1b9..bb80ffd2ea836bc34945469358d96b94cb4277a3 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -1803,6 +1803,11 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -1489,6 +1489,11 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
  
      @Override
      public void destroyBlockProgress(final int id, final BlockPos blockPos, final int progress) {
@@ -28,7 +28,7 @@ index 9e3e21d4c0e7845aaab1e5fd22557b33b0e0c452..58337f140ad3da9c2cfde216470e5323
          // CraftBukkit start
          Player breakerPlayer = null;
          Entity entity = this.getEntity(id);
-@@ -1819,7 +1824,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -1505,7 +1510,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                  .callEvent();
          }
          // Paper end - Add BlockBreakProgressUpdateEvent
@@ -37,7 +37,7 @@ index 9e3e21d4c0e7845aaab1e5fd22557b33b0e0c452..58337f140ad3da9c2cfde216470e5323
              if (player.level() == this && player.getId() != id) {
                  double xd = blockPos.getX() - player.getX();
                  double yd = blockPos.getY() - player.getY();
-@@ -1830,7 +1835,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -1516,7 +1521,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                          continue;
                      }
                      // CraftBukkit end

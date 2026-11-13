@@ -21,7 +21,7 @@ track:
 // SYNC SOURCE END
 
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
-index fd0b9f20fbdd523d51550fd6009b5011e6e7e6e6..46ef2336ddd8fb8a9b2ff6220ab40b486e90a956 100644
+index 452d89971a337201d4a9f7b6b095df4c54ac1180..7db59b0aebcd4ff887cb5b471296030f6b3fc8f3 100644
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
 @@ -138,7 +138,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
@@ -29,7 +29,7 @@ index fd0b9f20fbdd523d51550fd6009b5011e6e7e6e6..46ef2336ddd8fb8a9b2ff6220ab40b48
      private final ChunkMap.DistanceManager distanceManager;
      private final PlayerMap playerMap = new PlayerMap();
 -    public final Int2ObjectMap<ChunkMap.TrackedEntity> entityMap = new Int2ObjectOpenHashMap<>();
-+    public final Int2ObjectMap<ChunkMap.TrackedEntity> entityMap = new it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap<>(); // Gale - VMP - use linked map for entity trackers - provides faster iteration
++    public final Int2ObjectMap<ChunkMap.TrackedEntity> entityMap = new it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap<>(); // Gale - VMP - faster tracker iteration
      private final Long2ByteMap chunkTypeCache = new Long2ByteOpenHashMap();
-     // Paper - rewrite chunk system
-     public int serverViewDistance;
+     private final Long2LongMap nextChunkSaveTime = new Long2LongOpenHashMap();
+     private final LongSet chunksToEagerlySave = new LongLinkedOpenHashSet();

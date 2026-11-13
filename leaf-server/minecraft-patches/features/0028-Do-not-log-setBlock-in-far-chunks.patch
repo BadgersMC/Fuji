@@ -1,4 +1,4 @@
-From f35810d9622662eaa7b1b42ab3e194f37a297938 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Martijn Muijsers <martijnmuijsers@live.nl>
 Date: Fri, 13 Nov 2026 07:26:57 -0500
 Subject: [PATCH] Do not log setBlock in far chunks

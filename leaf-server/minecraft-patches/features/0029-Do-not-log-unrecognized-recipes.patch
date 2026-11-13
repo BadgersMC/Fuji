@@ -37,10 +37,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 diff --git a/net/minecraft/stats/ServerRecipeBook.java b/net/minecraft/stats/ServerRecipeBook.java
-index ac3fbaf20c3ed8ca981c9071f1bf95f2ad169f85..95a50f25455ec86f7662e9abd039be17609ed1e4 100644
+index 701bd0207def15fafad1dfdb05dc0690c41b5f91..12c7a9a196834e8edfc0befb484719c6b51003e5 100644
 --- a/net/minecraft/stats/ServerRecipeBook.java
 +++ b/net/minecraft/stats/ServerRecipeBook.java
-@@ -110,7 +110,7 @@ public class ServerRecipeBook extends RecipeBook {
+@@ -109,7 +109,7 @@ public class ServerRecipeBook extends RecipeBook {
      ) {
          for (ResourceKey<Recipe<?>> recipe : recipes) {
              if (!validator.test(recipe)) {

@@ -33,10 +33,10 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRA
 IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 diff --git a/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java b/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
-index 649f9646abb1bd84f1f22409aee09d2a4d27e581..d39379b2a9a087b38c96ebc31179c1bc6e6693ed 100644
+index 6d10e6b97491584f57a990811dfe773c485b97ab..7a529f276df7bbb10a8b832fed6139e0a5572e91 100644
 --- a/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
-@@ -20,7 +20,7 @@ public class ServerHandshakePacketListenerImpl implements ServerHandshakePacketL
+@@ -22,7 +22,7 @@ public class ServerHandshakePacketListenerImpl implements ServerHandshakePacketL
      static final java.util.regex.Pattern PROP_PATTERN = java.util.regex.Pattern.compile("\\w{0,16}");
      // Spigot end
      // Paper start - Connection throttle
@@ -45,7 +45,7 @@ index 649f9646abb1bd84f1f22409aee09d2a4d27e581..d39379b2a9a087b38c96ebc31179c1bc
      private static int throttleCounter = 0;
      // Paper end - Connection throttle
      private static final boolean BYPASS_HOSTCHECK = Boolean.getBoolean("Paper.bypassHostCheck"); // Paper
-@@ -80,7 +80,7 @@ public class ServerHandshakePacketListenerImpl implements ServerHandshakePacketL
+@@ -87,7 +87,7 @@ public class ServerHandshakePacketListenerImpl implements ServerHandshakePacketL
                  java.net.InetAddress address = socketAddress.getAddress();
  
                  synchronized (ServerHandshakePacketListenerImpl.throttleTracker) {
