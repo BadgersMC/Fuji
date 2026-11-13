@@ -34,6 +34,7 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 
 7. **Gale configuration source port (2026-11-13).** Regenerated `0002-Rebrand.patch` and `0003-Gale-configuration.patch` after migrating Gale's per-world constructor injection to Frontier Paper 26.4's new `Level` and `ServerLevel` signatures. All first **three** feature patches replayed consecutively with `git am --3way` in an isolated source worktree. Gale and Paper original GPL-3.0-only attribution was retained. This confirms patch application, **not compile or runtime correctness**. All 325 inventory patches remain tracked.
 8. **Leaf/Gale bootstrap patches through 0012 (2026-11-13).** Ported Leaf config startup to the 26.4 bootstrap order (`0004`); `0005`–`0007`, `0009`, and `0010` applied without conflict. For `0008`, the ShapelessRecipe fast-path is restricted to simple single-item ingredients; tag/exact/predicate choices use the native 26.4 matcher to avoid greedy matching errors. For `0011`–`0012`, per-world random scheduling and per-chunk lightning counters were adjusted to the 26.4 `tickThunder` implementation, retaining weather checks. Paperweight regenerated the series and all **first 12** patches replayed in order with `git am --3way`. The later Leaf faster-RNG integration, gameplay parity, and compilation still require verification.
+9. **Patches 0013–0022 (2026-11-13).** Patches `0013` and `0014` applied cleanly. For `0015`, migrated the inlined entity-tick exception handler to 26.4 without resurrecting the obsolete Moonrise mid-tick hook. Patches `0016`–`0022` applied without source conflict. All first **22** feature patches replayed sequentially after Paperweight regeneration, with all 325 original patch slots retained. **Next blocker: `0023-Variable-entity-wake-up-duration.patch`** targets deleted `io.papermc.paper.entity.activation.ActivationRange.java`, while Leaf's separate `org.dreeam.leaf.world.EntityActivation` still references legacy activation fields. The activation system requires a coordinated source/API migration before the rest of the patch chain can safely continue. Patch application alone does not establish compilation or behavior parity.
 
 ## Porting checklist
 
@@ -45,6 +46,8 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 - [x] Port and replay regenerated `0001-Purpur-Server-Minecraft-Changes.patch` against Frontier Paper Snapshot 8.
 - [x] Port `0002-Rebrand.patch` and `0003-Gale-configuration.patch`; replay all three patches sequentially on a clean Snapshot 8 source worktree.
 - [x] Port/replay `0004` through `0012`; preserve safe recipe choices and adapt lightning scheduling to 26.4.
+- [x] Port/replay `0013` through `0022`, preserving entity-tick exception behavior.
+- [ ] Port `0023` by adapting legacy activation-range logic to 26.4/Leaf's current entity activation model.
 - [ ] Continue with `0013` through `0325`; validate the changed RNG/crafting behavior in a later test build.
 - [ ] Port the remaining 324 Minecraft feature patches, and resolve the obsolete activation and explosion-cache hooks.
 - [ ] Rebase Leaf's 26.3 patch inventory onto the 26.4 fork source.
