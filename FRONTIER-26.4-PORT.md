@@ -32,6 +32,8 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 5. **Old-Paper-history setup conflict resolved in source preparation (2026-11-12).** Both local and CI initially failed in `:leaf-server:setupMacheSources` with JGit `Missing unknown 8c0b8396...` / `Short read of block`. Fuji's applied build script now omits Paper's transitional `updatingMinecraft.oldPaperCommit`, and the generated single-file patch was rebuilt through Paperweight. The corrected local run progressed through all 101 Mache patches and 950 Paper source patches. Upstream Frontier Paper is unchanged.
 6. **First Minecraft feature patch ported (2026-11-13).** The initial [CI run 43350733551](https://github.com/BadgersMC/Fuji/actions/runs/43350733551) stopped at `0001-Purpur-Server-Minecraft-Changes.patch`. A dedicated three-way source port reconciled 46 conflicting files and reworked two excluded files (sign colors and the deleted activation-range source). Paperweight rebuilt `0001` with the original MIT attribution; its regenerated patch replayed successfully on the 26.4 `file` base in a disposable worktree (344 changed files). **The next 324 Minecraft feature patches are still unported/unverified**, and a full server build has not passed. The deleted `ActivationRange` class's AFK/squid activation behavior, old EAR2 state, and historical explosion collision caches require separate compatibility work; they were not silently carried into the new source.
 
+7. **Gale configuration source port (2026-11-13).** Regenerated `0002-Rebrand.patch` and `0003-Gale-configuration.patch` after migrating Gale's per-world constructor injection to Frontier Paper 26.4's new `Level` and `ServerLevel` signatures. All first **three** feature patches replayed consecutively with `git am --3way` in an isolated source worktree. Gale and Paper original GPL-3.0-only attribution was retained. This confirms patch application, **not compile or runtime correctness**. All 325 inventory patches remain tracked.
+
 ## Porting checklist
 
 - [x] Create isolated experimental Fuji branch from merged `26.3`.
@@ -40,6 +42,7 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 - [x] Import and pin independent Fuji-Mache source; publish the exact Snapshot 8 Maven artifact locally.
 - [x] Confirm clean-machine CI reproduces Mache publication and full source preparation.
 - [x] Port and replay regenerated `0001-Purpur-Server-Minecraft-Changes.patch` against Frontier Paper Snapshot 8.
+- [x] Port `0002-Rebrand.patch` and `0003-Gale-configuration.patch`; replay all three patches sequentially on a clean Snapshot 8 source worktree.
 - [ ] Port the remaining 324 Minecraft feature patches, and resolve the obsolete activation and explosion-cache hooks.
 - [ ] Rebase Leaf's 26.3 patch inventory onto the 26.4 fork source.
 - [ ] Re-apply and adapt Sakura's cannon entity, explosion, redstone, per-region mechanics and configuration functionality.

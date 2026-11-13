@@ -5,7 +5,7 @@ Subject: [PATCH] Rebrand
 
 
 diff --git a/net/minecraft/CrashReport.java b/net/minecraft/CrashReport.java
-index aad550288b63f7bdedab72e2c94a011a3566986d..c20c33c86c7175b01a17b5645aea52fd0ef0a95f 100644
+index e5fce450df14da02463d1db5163f16b9d722f809..b051dfb7331a0f685193ffd3948fecbb3df015b5 100644
 --- a/net/minecraft/CrashReport.java
 +++ b/net/minecraft/CrashReport.java
 @@ -23,6 +23,7 @@ import org.slf4j.Logger;
@@ -15,7 +15,7 @@ index aad550288b63f7bdedab72e2c94a011a3566986d..c20c33c86c7175b01a17b5645aea52fd
 +    private static final List<String> EXTRA_INFO = List.of("", "DO NOT REPORT THIS TO PAPER! REPORT TO LEAF INSTEAD!", ""); // Leaf - Rebrand
      private final String title;
      private final Throwable exception;
-     private final List<CrashReportCategory> details = Lists.newArrayList();
+     private final List<CrashReportCategory> details = new ArrayList<>();
 @@ -147,7 +148,7 @@ public class CrashReport {
      }
  
@@ -35,10 +35,10 @@ index aad550288b63f7bdedab72e2c94a011a3566986d..c20c33c86c7175b01a17b5645aea52fd
  
      public SystemReport getSystemReport() {
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index fe024cb9ab614cd61ebbc8c504707ee7387d6a7c..b917e7396e25887e63a4e38b7396bf905861a011 100644
+index 08ecfa07979dadd9074f02222de08ad8f5a46d9d..387255c3e70d9e730b17751f7803ab331ca53dfb 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1295,7 +1295,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1177,7 +1177,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
              }
              // Paper end - Add onboarding message for initial server start
              // Paper start - Improve outdated version checking
