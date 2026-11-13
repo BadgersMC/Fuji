@@ -21,15 +21,14 @@ Fuji now maintains [BadgersMC/Fuji-Mache](https://github.com/BadgersMC/Fuji-Mach
 
 To reproduce that publication locally using Java 25, run the [installation helper](scripts/install-fuji-mache.ps1) from PowerShell. The script validates the pinned Mache commit before building. On Linux or CI, run `./gradlew ':versions:v26_4-snapshot-8:publishToMavenLocal'` in the pinned Mache repository.
 
-Clean-machine CI and source setup still need independent validation. Installing Mache resolves the 26.4 **Paper build input**, not any Leaf/Sakura/Fuji patch incompatibilities.
+Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji-Mache/actions/runs/43346381714) **passed** at commit `8ad2b02dd5f0d4e698182383ef5f227e0f9747f2`: source setup, decompilation, Mache patch application, local Maven publication, version verification, and upload of the Maven artifact/checksum. This validates the independent **Paper build input**, not Fuji's Leaf/Sakura patch compatibility.
 
-## Known blockers before the first Fuji build
+## Remaining blockers before the first Fuji build
 
-1. **Snapshot Mache clean-room validation.** The independently published Mache ZIP is available locally, but clean-machine CI and full decompilation/source-patch setup still require validation.
-2. **Minecraft and Paper patch-port incompatibility.** This branch deliberately retains Fuji's **26.3** Leaf/Sakura/Fuji patch files. They are a source inventory, **not** ported 26.4 patches. Do not assume `applyAllPatches` succeeds, and do not publish a JAR from this branch without complete patch reapplication and validation.
-3. **API/behavior changes.** Fain's `snapshot-todos.txt` flags API/event conversion, command suggestions, brewing recipes, data-driven sound types, per-block biomes, and registry changes. Independently audit all Leaf, Sakura and Fuji patches touching those areas.
-4. **No 26.4 release workflow.** Fuji's existing build/release workflow is limited to the `26.3` branch. This experimental branch intentionally does not enable automated server publication.
-5. **First observed patch conflict (2026-11-12).** `./gradlew applyAllPatches` reached the pinned Frontier Paper repository but stopped at `:applyPaperSingleFilePatches`. Hunks 0 and 3 of Fuji's inherited `leaf-server/build.gradle.kts.patch` do not apply to Frontier Paper's `paper-server/build.gradle.kts`. This confirms the first 26.3-to-26.4 patch migration target; do not hand-edit the archived patch file.
+1. **Minecraft and Paper patch-port incompatibility.** This branch deliberately retains Fuji's **26.3** Leaf/Sakura/Fuji patch files. They are a source inventory, **not** ported 26.4 patches. Do not assume `applyAllPatches` succeeds, and do not publish a JAR from this branch without complete patch reapplication and validation.
+2. **API/behavior changes.** Fain's `snapshot-todos.txt` flags API/event conversion, command suggestions, brewing recipes, data-driven sound types, per-block biomes, and registry changes. Independently audit all Leaf, Sakura and Fuji patches touching those areas.
+3. **No 26.4 release workflow.** Fuji's existing build/release workflow is limited to the `26.3` branch. This experimental branch intentionally does not enable automated server publication.
+4. **First observed patch conflict (2026-11-12).** `./gradlew applyAllPatches` reached the pinned Frontier Paper repository but stopped at `:applyPaperSingleFilePatches`. Hunks 0 and 3 of Fuji's inherited `leaf-server/build.gradle.kts.patch` do not apply to Frontier Paper's `paper-server/build.gradle.kts`. This confirms the first 26.3-to-26.4 patch migration target; do not hand-edit the archived patch file.
 
 ## Porting checklist
 
@@ -37,7 +36,7 @@ Clean-machine CI and source setup still need independent validation. Installing 
 - [x] Pin Paperweight upstream to Fain's exact fork commit.
 - [x] Record Snapshot 8 Mache and compatibility blockers.
 - [x] Import and pin independent Fuji-Mache source; publish the exact Snapshot 8 Maven artifact locally.
-- [ ] Confirm clean-machine CI reproduces Mache publication and full source preparation.
+- [x] Confirm clean-machine CI reproduces Mache publication and full source preparation.
 - [ ] Rebase Leaf's 26.3 patch inventory onto the 26.4 fork source.
 - [ ] Re-apply and adapt Sakura's cannon entity, explosion, redstone, per-region mechanics and configuration functionality.
 - [ ] Re-apply Fuji's maintenance, cannon-height, legacy knockback, instant falling-block stacking, visibility/raytrace, and player-only 20 Hz tracker patches.
