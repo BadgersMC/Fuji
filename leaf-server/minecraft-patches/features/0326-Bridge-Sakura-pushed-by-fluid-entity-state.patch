@@ -1,0 +1,30 @@
+From c94f4b46d9b4b8698bfa3a07c731d07ef2db58a5 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Fri, 13 Nov 2026 18:41:30 -0500
+Subject: [PATCH] Bridge Sakura pushed-by-fluid entity state on Frontier 26.4
+
+Minimal compatibility bridge for Sakura entity pushed-by-fluid API: stored flag defaults true and NMS fluid interaction respects it. Original Sakura 26.3 integration 0315 remains blocked and must not reintroduce this field.
+---
+ net/minecraft/world/entity/Entity.java | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 08f4138..fd3cb65 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -4534,8 +4534,11 @@ public abstract class Entity
+         return this.stringUUID;
+     }
+ 
++    // Sakura - entity pushed by fluid API (26.4 compatibility port).
++    public boolean pushedByFluid = true;
++
+     public boolean isPushedByFluid() {
+-        return true;
++        return this.pushedByFluid;
+     }
+ 
+     public boolean isPushedByExplosions() {
+-- 
+2.39.1.windows.1
+

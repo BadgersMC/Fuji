@@ -1,0 +1,35 @@
+From ecda4e054a4c5a7a082c32fceca84bdd27530ac8 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Fri, 13 Nov 2026 18:41:31 -0500
+Subject: [PATCH] Implement Sakura pushed-by-fluid Bukkit API in CraftEntity
+
+Expose source-of-truth entity flag through existing Paper API methods in CraftEntity base, not per subclass. Depends on NMS Sakura fluid bridge.
+---
+ .../org/bukkit/craftbukkit/entity/CraftEntity.java    | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index b1438ccec..b5bc70d39 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -148,6 +148,17 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+     }
+     // Purpur end - API for any mob to burn daylight
+ 
++    // Sakura - entity pushed by fluid API (26.4 compatibility port).
++    @Override
++    public final boolean isPushedByFluid() {
++        return this.getHandle().isPushedByFluid();
++    }
++
++    @Override
++    public final void setPushedByFluid(final boolean push) {
++        this.getHandle().pushedByFluid = push;
++    }
++
+     public static <T extends Entity> CraftEntity getEntity(CraftServer server, T entity) {
+         Preconditions.checkArgument(entity != null, "Unknown entity");
+ 
+-- 
+2.39.1.windows.1
+
