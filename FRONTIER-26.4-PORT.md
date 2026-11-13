@@ -1,6 +1,6 @@
 # Fuji experimental port — Frontier Paper 26.4 Snapshot 8
 
-> **Status: FIRST 77 MINECRAFT PATCHES RECONCILED AND REGENERATED, REMAINING PATCH STACK UNVERIFIED. Not a compiled or validated server build.**
+> **Status: FIRST 78 MINECRAFT PATCHES RECONCILED AND REGENERATED, REMAINING PATCH STACK UNVERIFIED. Not a compiled or validated server build.**
 >
 > This branch exists to port Fuji 26.3 (Leaf + Sakura + Fuji) onto Fain's experimental Paper 26.4 fork without touching Fuji's 26.3 release line.
 
@@ -46,6 +46,8 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 
 14. **Safe Pufferfish 0077 snapshot port (2026-11-13).** Implemented and consecutively replayed the original `0077` in the clean source checkout. The world thread now captures immutable mob categories/positions/spawn-costs from loaded chunks, the async worker only aggregates those captured values, and native `LocalMobCapCalculator` counts are restored on the server thread. Thread ownership and cancellation/exception fallback are handled through a single per-world future; the sync path stays intact. The `async-mob-spawning.enabled` default is **false** in this experimental port, pending runtime parity, performance and server-thread-affinity tests. Paperweight **successfully regenerated all 77 patches**; only 0077 changed relative to the prior 76-patch committed checkpoint. An early `:leaf-server:compileJava` attempt in this partial-patch tree failed with 2,715 unrelated/mixed unresolved classes and removed Moonrise references, including CraftBukkit/Leaf internals; a successful build has **not** been established. Patch 0078 is next, with its old AI activation hook requiring API-specific review.
 
+15. **Patch `0078` Pufferfish Dynamic Activation of Brain (2026-11-13).** Applied 12 of its 14 source files unchanged and reconciled `Entity` / `Villager` with Frontier's EAR2 source. Fixed a compile-incompatible bitshift against the **double-valued** activation distance modifier by using `2^modifier` scaling. Default brain tick priority is **1** (feature disabled maintains native brain tick behavior); enabled priorities are clamped to at least 1, preserving Purpur villager control and lobotomization. The villager panic check now retains vanilla 100-tick cadence while DAB is off; when enabled, it uses absolute game-time deadlines to avoid missing events when brain ticks are throttled. Original Pufferfish GPL-3.0-only attribution and author **Paul Sauve** restored. Paperweight successfully regenerated **78 consecutive** source feature patches; the existing 77 files were unchanged. **Compilation/runtime not validated.** Next source conflict is `0079-Fix-Pufferfish-and-Purpur-patches.patch` (notably shift-click XP mending, experience-orb semantics, and enchantment inventory).
+
 ## Porting checklist
 
 - [x] Create isolated experimental Fuji branch from merged `26.3`.
@@ -60,7 +62,7 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 - [x] Port and regenerate `0023` by adapting EAR2 activation-range logic to 26.4/Leaf's current entity activation model (source-only).
 - [x] Independently replay `0024`–`0039` in disposable worktrees, explicitly omitting blocked `0023`; port logging hooks in `0028` and `0035`.
 - [ ] Port the remaining series `0077`–`0325` **consecutively**, including replacing obsolete Moonrise optimizations; validate RNG/crafting behavior in a later owner test build.
-- [ ] Complete and validate the 248 Minecraft feature patches not yet replayed consecutively (from `0078` onward), resolving obsolete Moonrise and explosion-cache hooks.
+- [ ] Complete and validate the 247 Minecraft feature patches not yet replayed consecutively (from `0079` onward), resolving obsolete Moonrise and explosion-cache hooks.
 - [ ] Rebase Leaf's 26.3 patch inventory onto the 26.4 fork source.
 - [ ] Re-apply and adapt Sakura's cannon entity, explosion, redstone, per-region mechanics and configuration functionality.
 - [ ] Re-apply Fuji's maintenance, cannon-height, legacy knockback, instant falling-block stacking, visibility/raytrace, and player-only 20 Hz tracker patches.

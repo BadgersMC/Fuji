@@ -29,11 +29,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+Frontier 26.4 port: preserved native EAR2 and Purpur villager controls, fixed configurable double-distance scaling, clamped activation priority to >=1, and kept the 100-tick golem panic schedule when DAB is disabled.
+
 diff --git a/io/papermc/paper/entity/activation/ActivationRange.java b/io/papermc/paper/entity/activation/ActivationRange.java
-index 987bbafa8033f0b7bd80856d9187d1ea8a0d3103..922c95a3bbdc27ff86ce74ecedb0bc63d4018f93 100644
+index 30084ac201c85e87a9abfd7e41494ddb3d24643c..70bfe3516b70559b5d0196b1dbc6c271a444c690 100644
 --- a/io/papermc/paper/entity/activation/ActivationRange.java
 +++ b/io/papermc/paper/entity/activation/ActivationRange.java
-@@ -180,6 +180,22 @@ public final class ActivationRange {
+@@ -179,6 +179,27 @@ public final class ActivationRange {
                  }
  
                  ActivationRange.activateEntity(entity);
@@ -43,12 +45,17 @@ index 987bbafa8033f0b7bd80856d9187d1ea8a0d3103..922c95a3bbdc27ff86ce74ecedb0bc63
 +                        (!org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.dontEnableIfInWater || entity.is(net.minecraft.tags.EntityTypeTags.CAN_BREATHE_UNDER_WATER) || !entity.isInWater())) { // Leaf - Option for dontEnableIfInWater
 +                    if (!entity.activatedPriorityReset) {
 +                        entity.activatedPriorityReset = true;
-+                        entity.activatedPriority = org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.maximumActivationPrio;
++                        entity.activatedPriority = Math.max(1, org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.maximumActivationPrio);
 +                    }
-+                    int squaredDistance = (int) player.distanceToSqr(entity);
-+                    entity.activatedPriority = squaredDistance > org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.startDistanceSquared ?
-+                            Math.max(1, Math.min(squaredDistance >> org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.activationDistanceMod, entity.activatedPriority)) :
-+                            1;
++                    final double squaredDistance = player.distanceToSqr(entity);
++                    if (squaredDistance <= org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.startDistanceSquared) {
++                        entity.activatedPriority = 1;
++                    } else {
++                        // 26.4: activationDistanceMod is a configurable double, not an integer shift operand.
++                        final double divisor = Math.pow(2.0D, org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.activationDistanceMod);
++                        final int period = (int) Math.max(1.0D, squaredDistance / divisor);
++                        entity.activatedPriority = Math.max(1, Math.min(period, entity.activatedPriority));
++                    }
 +                } else {
 +                    entity.activatedPriority = 1;
 +                }
@@ -56,7 +63,7 @@ index 987bbafa8033f0b7bd80856d9187d1ea8a0d3103..922c95a3bbdc27ff86ce74ecedb0bc63
              }
          }
      }
-@@ -191,11 +207,11 @@ public final class ActivationRange {
+@@ -190,11 +211,11 @@ public final class ActivationRange {
       */
      private static void activateEntity(final Entity entity) {
          if (MinecraftServer.currentTick > entity.activatedTick) {
@@ -71,10 +78,10 @@ index 987bbafa8033f0b7bd80856d9187d1ea8a0d3103..922c95a3bbdc27ff86ce74ecedb0bc63
              }
          }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 58337f140ad3da9c2cfde216470e5323ed870a15..1e47c842fcdf844aeeccff126b2d3c58b35c6f60 100644
+index bb80ffd2ea836bc34945469358d96b94cb4277a3..40ca1f999077575492474b19156091cde86d33e0 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -910,6 +910,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -654,6 +654,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
              this.entityTickList
                  .forEach(
                      entity -> {
@@ -83,20 +90,20 @@ index 58337f140ad3da9c2cfde216470e5323ed870a15..1e47c842fcdf844aeeccff126b2d3c58
                              if (!tickRateManager.isEntityFrozen(entity)) {
                                  profiler.push("checkDespawn");
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 94a747389ab849252ce8a52df45284619d868f16..7a2d4b0cefcd7fa8e598c58bef410079d59dc7ac 100644
+index 5747949319698e6528eb242dc2112e30163d2471..7e63bd9b473dc805563a59b88869b14029fe9f87 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -390,6 +390,8 @@ public abstract class Entity
-     public boolean fixedPose = false; // Paper - Expand Pose API
-     private final int despawnTime; // Paper - entity despawn time limit
-     public int totalEntityAge; // Paper - age-like counter for all entities
-+    public boolean activatedPriorityReset = false; // Pufferfish - DAB
-+    public int activatedPriority = org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.maximumActivationPrio; // Pufferfish - DAB (golf score)
+@@ -432,6 +432,8 @@ public abstract class Entity
      public final io.papermc.paper.entity.activation.ActivationType activationType = io.papermc.paper.entity.activation.ActivationType.activationTypeFor(this); // Paper - EAR 2/tracking ranges
-     public @Nullable Boolean immuneToFire = null; // Purpur - Fire immune API
-     // Paper start - EAR 2
+     public @Nullable Boolean immuneToFire = null; // Purpur - fire immunity API
+     // Paper start - EAR 2 (Frontier 26.4 compatibility)
++    public boolean activatedPriorityReset = false; // Pufferfish - DAB
++    public int activatedPriority = 1; // Pufferfish - DAB; disabled feature must retain vanilla brain tick frequency
+     public final boolean defaultActivationState;
+     public long activatedTick = Integer.MIN_VALUE;
+     public boolean isTemporarilyActive;
 diff --git a/net/minecraft/world/entity/EntityType.java b/net/minecraft/world/entity/EntityType.java
-index e4fd3727cdf99bebed91ac195034e988cdc9951b..af7ae155a43f20d48538aa82053f6b9f3781c620 100644
+index 03f35ff10709ab5aa01975c7ae5759b21f427386..547e001fe981cc05002b2ece45ce94b5db8fe834 100644
 --- a/net/minecraft/world/entity/EntityType.java
 +++ b/net/minecraft/world/entity/EntityType.java
 @@ -67,6 +67,7 @@ public class EntityType<T extends Entity> implements EntityTypeTest<Entity, T>,
@@ -108,24 +115,33 @@ index e4fd3727cdf99bebed91ac195034e988cdc9951b..af7ae155a43f20d48538aa82053f6b9f
      private @Nullable Component description;
      private final Optional<ResourceKey<LootTable>> lootTable;
 diff --git a/net/minecraft/world/entity/ai/behavior/VillagerPanicTrigger.java b/net/minecraft/world/entity/ai/behavior/VillagerPanicTrigger.java
-index bb037ea27688a06bb0d8141ef25d2543d34aba80..a841999aceb9bcdff8de7b052aaddc0ac0fed98a 100644
+index bb037ea27688a06bb0d8141ef25d2543d34aba80..401d3dfcce0fdf1de839bb6d858e813c069fc183 100644
 --- a/net/minecraft/world/entity/ai/behavior/VillagerPanicTrigger.java
 +++ b/net/minecraft/world/entity/ai/behavior/VillagerPanicTrigger.java
-@@ -36,7 +36,11 @@ public class VillagerPanicTrigger extends Behavior<Villager> {
+@@ -36,7 +36,20 @@ public class VillagerPanicTrigger extends Behavior<Villager> {
  
      @Override
      protected void tick(final ServerLevel level, final Villager body, final long timestamp) {
 -        if (timestamp % 100L == 0L) {
-+        // Pufferfish start
-+        if (body.nextGolemPanic < 0) body.nextGolemPanic = timestamp + 100;
-+        if (--body.nextGolemPanic < timestamp) {
-+            body.nextGolemPanic = -1;
-+            // Pufferfish end
++        // Pufferfish - preserve vanilla's 100-tick schedule when DAB is disabled.
++        if (!org.dreeam.leaf.config.modules.opt.DynamicActivationofBrain.enabled) {
++            if (timestamp % 100L == 0L) {
++                body.spawnGolemIfNeeded(level, timestamp, 3);
++            }
++            return;
++        }
++
++        // A throttled brain might skip the exact modulo tick; compare absolute game time.
++        if (body.nextGolemPanic < 0L) {
++            body.nextGolemPanic = timestamp + 100L;
++        }
++        if (timestamp >= body.nextGolemPanic) {
++            body.nextGolemPanic = timestamp + 100L;
              body.spawnGolemIfNeeded(level, timestamp, 3);
          }
      }
 diff --git a/net/minecraft/world/entity/animal/allay/Allay.java b/net/minecraft/world/entity/animal/allay/Allay.java
-index aa53a618ca6b575bfbb10089010d689846cf9baf..e4ed7ba795eec06f270849a84bc0733123f7ab23 100644
+index b0a99e0e243113ce8fccecf7dd07fe520c8c58c3..32c079bcbaf36f9f25eec028b45a9e11cc63a481 100644
 --- a/net/minecraft/world/entity/animal/allay/Allay.java
 +++ b/net/minecraft/world/entity/animal/allay/Allay.java
 @@ -256,11 +256,12 @@ public class Allay extends PathfinderMob implements InventoryCarrier, VibrationS
@@ -143,10 +159,10 @@ index aa53a618ca6b575bfbb10089010d689846cf9baf..e4ed7ba795eec06f270849a84bc07331
          profiler.pop();
          profiler.push("allayActivityUpdate");
 diff --git a/net/minecraft/world/entity/animal/axolotl/Axolotl.java b/net/minecraft/world/entity/animal/axolotl/Axolotl.java
-index adf937ea7225a546c3f41c37a70a4274041abe80..2a0f4648d50581cc9fd58a772cb672eb99f26765 100644
+index a511aae58557db9f5e8f6702248b2da187014be9..49bd3daaaa1c56af22e9db1774dff7bc8dd116ab 100644
 --- a/net/minecraft/world/entity/animal/axolotl/Axolotl.java
 +++ b/net/minecraft/world/entity/animal/axolotl/Axolotl.java
-@@ -429,11 +429,12 @@ public class Axolotl extends Animal implements Bucketable {
+@@ -426,11 +426,12 @@ public class Axolotl extends Animal implements Bucketable {
          return true;
      }
  
@@ -161,7 +177,7 @@ index adf937ea7225a546c3f41c37a70a4274041abe80..2a0f4648d50581cc9fd58a772cb672eb
          profiler.pop();
          profiler.push("axolotlActivityUpdate");
 diff --git a/net/minecraft/world/entity/animal/frog/Frog.java b/net/minecraft/world/entity/animal/frog/Frog.java
-index 79e1e1a0664cb08c1263f43b8abc3dae2828863f..814bd26dfca0acd77d77477e4a2794c7d42340fb 100644
+index 85ef95f4a1a2ca1fc00b21e882251f5fe7a78d9d..36ee34314a406bb3661556ab4af11c006a3986ae 100644
 --- a/net/minecraft/world/entity/animal/frog/Frog.java
 +++ b/net/minecraft/world/entity/animal/frog/Frog.java
 @@ -229,11 +229,12 @@ public class Frog extends Animal {
@@ -197,7 +213,7 @@ index 30b538a10497d7808217cdcc161161a0feea505e..f60d313dbfa8d0ae4718cb3a5c263cc8
          profiler.pop();
          profiler.push("tadpoleActivityUpdate");
 diff --git a/net/minecraft/world/entity/animal/goat/Goat.java b/net/minecraft/world/entity/animal/goat/Goat.java
-index b80f77a3b46737a46a053de197832aae35b31d58..30d9800bd4a0e4a0a6a2bd0e95151cbf3d6eaea5 100644
+index 2a18963591ce7688759d22672b49fcbd33b9fef5..49d1725327a34dfc2c84c208fe78faddc9d06edc 100644
 --- a/net/minecraft/world/entity/animal/goat/Goat.java
 +++ b/net/minecraft/world/entity/animal/goat/Goat.java
 @@ -227,11 +227,12 @@ public class Goat extends Animal {
@@ -251,7 +267,7 @@ index 860c079013507852aa9d6b0aaeb5970e9d693fcb..ce0f6871057e386ada6f5e12b4001f54
          profiler.pop();
          PiglinAi.updateActivity(this);
 diff --git a/net/minecraft/world/entity/monster/warden/Warden.java b/net/minecraft/world/entity/monster/warden/Warden.java
-index 9302e5ba66e9cedec25b868ff51954c888b76a22..4ffc5962a5e1b3a7f8f1fbda3479af82001771ae 100644
+index b3c83cf245d564755c43b91eb20de557905b4258..0c9fce7dd0bbc1c7d0e2d7d79202334fc34cc452 100644
 --- a/net/minecraft/world/entity/monster/warden/Warden.java
 +++ b/net/minecraft/world/entity/monster/warden/Warden.java
 @@ -310,11 +310,12 @@ public class Warden extends Monster implements VibrationSystem {
@@ -269,31 +285,25 @@ index 9302e5ba66e9cedec25b868ff51954c888b76a22..4ffc5962a5e1b3a7f8f1fbda3479af82
          profiler.pop();
          super.customServerAiStep(level);
 diff --git a/net/minecraft/world/entity/npc/villager/Villager.java b/net/minecraft/world/entity/npc/villager/Villager.java
-index b7d5037ebfd306f37f689df161406a72645d1e9a..5cf9b3caa7b06b947f5314b0eab2d8ed1b180d32 100644
+index 7c49cb6c8cd983955263d5b673426d4a16343c26..9d117c7e8fb47f737d61d37a2dd84ce630facfa6 100644
 --- a/net/minecraft/world/entity/npc/villager/Villager.java
 +++ b/net/minecraft/world/entity/npc/villager/Villager.java
-@@ -180,6 +180,7 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
+@@ -180,6 +180,8 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
      );
      private boolean isLobotomized = false; public boolean isLobotomized() { return this.isLobotomized; } // Purpur - Lobotomize stuck villagers
      private int notLobotomizedCount = 0; // Purpur - Lobotomize stuck villagers
 +    public long nextGolemPanic = -1; // Pufferfish
++    private int behaviorTick = 0; // Pufferfish - DAB
  
      public Villager(final EntityType<? extends Villager> entityType, final Level level) {
          super(entityType, level);
-@@ -370,6 +371,7 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
-     }
-     // Paper end - EAR 2
- 
-+    private int behaviorTick = 0; // Pufferfish
-     @Override
-     protected void customServerAiStep(final ServerLevel level) {
-         // Paper start - EAR 2
-@@ -386,7 +388,7 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
+@@ -378,7 +380,8 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
          } else {
              this.isLobotomized = false;
          }
--        if (!inactive && (getRider() == null || !this.isControllable())) { // Purpur - Ridables
-+        if (!inactive && (getRider() == null || !this.isControllable()) && this.behaviorTick++ % this.activatedPriority == 0) { // Purpur - Ridables // Pufferfish
-             this.getBrain().tick(level, this); // Paper - EAR 2
-         }
-         else if (this.isLobotomized && shouldRestock(level)) restock();
+-        if (!inactive && !this.isLobotomized && (this.getRider() == null || !this.isControllable())) {
++        if (!inactive && !this.isLobotomized && (this.getRider() == null || !this.isControllable())
++            && this.behaviorTick++ % Math.max(1, this.activatedPriority) == 0) { // Pufferfish - DAB; preserve Purpur controls
+             this.getBrain().tick(level, this);
+         } else if (this.isLobotomized && this.shouldRestock(level)) {
+             this.restock();
