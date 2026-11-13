@@ -1,0 +1,41 @@
+# Bootstrap the independent Fuji Mache 26.4 Snapshot 8 artifact.
+# Run this script manually from the experimental Fuji branch with Java 25 and Git.
+[CmdletBinding()]
+param(
+    [string] $MacheDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) '..\Fuji-Mache')
+)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$repo = 'https://github.com/BadgersMC/Fuji-Mache.git'
+$pinnedCommit = '4cc6b8358ccd1a7fd5f7b524744ef1ff8daa649f'
+$version = '26.4-snapshot-8+build.local-SNAPSHOT'
+
+if (-not (Test-Path -LiteralPath $MacheDirectory)) {
+    & git clone --depth 1 $repo $MacheDirectory
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to clone Fuji-Mache' }
+}
+if (-not (Test-Path -LiteralPath (Join-Path $MacheDirectory 'gradlew.bat'))) {
+    throw "Fuji-Mache Gradle wrapper is missing at $MacheDirectory"
+}
+$actualCommit = (& git -C $MacheDirectory rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $actualCommit -ne $pinnedCommit) {
+    throw "Fuji-Mache HEAD must equal $pinnedCommit (found $actualCommit). Preserve unrelated changes before switching revisions."
+}
+$modified = (& git -C $MacheDirectory status --porcelain)
+if ($LASTEXITCODE -ne 0 -or $modified) {
+    throw "Fuji-Mache has uncommitted source changes; refusing to build a non-reproducible artifact."
+}
+Push-Location $MacheDirectory
+try {
+    & '.\gradlew.bat' ':versions:v26_4-snapshot-8:publishToMavenLocal' --stacktrace --no-daemon
+    if ($LASTEXITCODE -ne 0) { throw 'Fuji-Mache Maven-local publication failed' }
+} finally {
+    Pop-Location
+}
+$maven = Join-Path $env:USERPROFILE ('.m2\repository\io\papermc\mache\' + $version)
+$pom = Join-Path $maven ('mache-' + $version + '.pom')
+if (-not (Test-Path -LiteralPath $pom)) {
+    throw "Expected Maven POM not found at $pom. Check generated artifact coordinates."
+}
+Write-Host "Fuji-Mache $version is installed at $maven"
