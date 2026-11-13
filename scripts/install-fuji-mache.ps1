@@ -2,10 +2,13 @@
 # Run this script manually from the experimental Fuji branch with Java 25 and Git.
 [CmdletBinding()]
 param(
-    [string] $MacheDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) '..\Fuji-Mache')
+    [string] $MacheDirectory = ''
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($MacheDirectory)) {
+    $MacheDirectory = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\Fuji-Mache'))
+}
 
 $repo = 'https://github.com/BadgersMC/Fuji-Mache.git'
 $pinnedCommit = '4cc6b8358ccd1a7fd5f7b524744ef1ff8daa649f'
