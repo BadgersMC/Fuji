@@ -1,17 +1,24 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From f7a17f69fb0057a9298c744f62e422cfa9e075db Mon Sep 17 00:00:00 2001
 From: etil2jz <81570777+etil2jz@users.noreply.github.com>
 Date: Tue, 2 Aug 2022 14:48:12 +0200
 Subject: [PATCH] Mirai: Configurable chat message signatures
 
-Fixed & Updated by Dreeam-qwq
-Original license: GPL-3.0-only
-Original project: https://github.com/Dreeam-qwq/Mirai
-
 Original license: GPL-3.0-only
 Original project: https://github.com/etil2jz/Mirai
+Compatibility updates by Dreeam and BadgersMC for Frontier 26.4.
+
+Frontier Paper 26.4: preserve the native six-field ServerStatus codec and advertise secure chat policy consistently when explicitly opted out. Keep chat signature verification truthful rather than falsely claiming unsigned messages are trusted. Signed-chat configuration remains ENABLED by default. Original Mirai GPL-3.0-only with Dreeam updates. Runtime client verification pending.
+---
+ .../protocol/game/ClientboundLoginPacket.java    |  2 +-
+ .../protocol/game/ServerboundChatPacket.java     |  2 +-
+ .../network/protocol/status/ServerStatus.java    |  2 +-
+ .../server/dedicated/DedicatedServer.java        |  1 +
+ .../network/ServerGamePacketListenerImpl.java    | 16 ++++++++++++++--
+ net/minecraft/server/players/PlayerList.java     |  2 +-
+ 6 files changed, 19 insertions(+), 6 deletions(-)
 
 diff --git a/net/minecraft/network/protocol/game/ClientboundLoginPacket.java b/net/minecraft/network/protocol/game/ClientboundLoginPacket.java
-index 389e7a85439d67a4a86fc94f2134075fb3fa6138..91c1f92f358d69752c8e4c8b193375abf293ee9f 100644
+index 924a58e..6ab3b3f 100644
 --- a/net/minecraft/network/protocol/game/ClientboundLoginPacket.java
 +++ b/net/minecraft/network/protocol/game/ClientboundLoginPacket.java
 @@ -49,7 +49,7 @@ public record ClientboundLoginPacket(
@@ -19,12 +26,12 @@ index 389e7a85439d67a4a86fc94f2134075fb3fa6138..91c1f92f358d69752c8e4c8b193375ab
          ClientboundLoginPacket::onlineMode,
          ByteBufCodecs.BOOL,
 -        ClientboundLoginPacket::enforcesSecureChat,
-+        packet -> !org.dreeam.leaf.config.modules.network.ChatMessageSignature.enabled || packet.enforcesSecureChat(), // Leaf - Mirai - Configurable chat message signatures
++        packet -> org.dreeam.leaf.config.modules.network.ChatMessageSignature.enabled && packet.enforcesSecureChat(), // Leaf - Mirai: don't advertise enforcement after explicit opt-out
          ClientboundLoginPacket::new
      );
  
 diff --git a/net/minecraft/network/protocol/game/ServerboundChatPacket.java b/net/minecraft/network/protocol/game/ServerboundChatPacket.java
-index b758f2d913b5539362d228b04d4c9bb87e8c8482..e40c1356779c7293f240c7276e85d2a6ee217de2 100644
+index b758f2d..e40c135 100644
 --- a/net/minecraft/network/protocol/game/ServerboundChatPacket.java
 +++ b/net/minecraft/network/protocol/game/ServerboundChatPacket.java
 @@ -20,7 +20,7 @@ public record ServerboundChatPacket(String message, Instant timeStamp, long salt
@@ -37,60 +44,23 @@ index b758f2d913b5539362d228b04d4c9bb87e8c8482..e40c1356779c7293f240c7276e85d2a6
          ServerboundChatPacket::lastSeenMessages,
          ServerboundChatPacket::new
 diff --git a/net/minecraft/network/protocol/status/ServerStatus.java b/net/minecraft/network/protocol/status/ServerStatus.java
-index 5eb7d46bf0d84720662125711fa7b544e9299446..69206f1670321d8908e75fd203760590b3751cfb 100644
+index fffb0a9..22212f0 100644
 --- a/net/minecraft/network/protocol/status/ServerStatus.java
 +++ b/net/minecraft/network/protocol/status/ServerStatus.java
-@@ -20,9 +20,13 @@ public record ServerStatus(
-     Optional<ServerStatus.Version> version,
-     Optional<ServerStatus.Favicon> favicon,
-     boolean enforcesSecureChat
-+    , boolean preventsChatReports // Leaf - Mirai - Configurable chat message signatures
- ) {
-     public static final Codec<ServerStatus> CODEC = RecordCodecBuilder.create(
--        i -> i.group(
-+        // Leaf start - Mirai - Configurable chat message signatures
-+        i ->
-+            org.dreeam.leaf.config.modules.network.ChatMessageSignature.enabled
-+            ? i.group(
-                 ComponentSerialization.CODEC.lenientOptionalFieldOf("description", CommonComponents.EMPTY).forGetter(ServerStatus::description),
+@@ -28,7 +28,7 @@ public record ServerStatus(
                  ServerStatus.Players.CODEC.lenientOptionalFieldOf("players").forGetter(ServerStatus::players),
                  ServerStatus.Version.CODEC.lenientOptionalFieldOf("version").forGetter(ServerStatus::version),
-@@ -30,8 +34,30 @@ public record ServerStatus(
-                 Codec.BOOL.lenientOptionalFieldOf("enforcesSecureChat", false).forGetter(ServerStatus::enforcesSecureChat)
+                 ServerStatus.Favicon.CODEC.lenientOptionalFieldOf("favicon").forGetter(ServerStatus::favicon),
+-                Codec.BOOL.lenientOptionalFieldOf("enforcesSecureChat", false).forGetter(ServerStatus::enforcesSecureChat),
++                Codec.BOOL.lenientOptionalFieldOf("enforcesSecureChat", false).forGetter(status -> org.dreeam.leaf.config.modules.network.ChatMessageSignature.enabled && status.enforcesSecureChat()), // Leaf - Mirai - accurately advertise operator-selected chat policy
+                 Codec.STRING.lenientOptionalFieldOf("contact").forGetter(ServerStatus::contact)
              )
              .apply(i, ServerStatus::new)
-+            : i.group(
-+                ComponentSerialization.CODEC.lenientOptionalFieldOf("description", CommonComponents.EMPTY).forGetter(ServerStatus::description),
-+                ServerStatus.Players.CODEC.lenientOptionalFieldOf("players").forGetter(ServerStatus::players),
-+                ServerStatus.Version.CODEC.lenientOptionalFieldOf("version").forGetter(ServerStatus::version),
-+                ServerStatus.Favicon.CODEC.lenientOptionalFieldOf("favicon").forGetter(ServerStatus::favicon),
-+                Codec.BOOL.lenientOptionalFieldOf("enforcesSecureChat", false).forGetter(x -> true),
-+                Codec.BOOL.lenientOptionalFieldOf("preventsChatReports", false).forGetter(x -> true)
-+                )
-+            .apply(i, ServerStatus::new)
-+            // Leaf end- Mirai - Configurable chat message signatures
-     );
- 
-+    // Leaf start - Mirai - Configurable chat message signatures
-+    public ServerStatus(
-+        final Component description,
-+        final Optional<ServerStatus.Players> players,
-+        final Optional<ServerStatus.Version> version,
-+        final Optional<ServerStatus.Favicon> favicon,
-+        final boolean enforcesSecureChat
-+    ) {
-+        this(description, players, version, favicon, enforcesSecureChat, false);
-+    }
-+    // Leaf end- Mirai - Configurable chat message signatures
-+
-     public record Favicon(byte[] iconBytes) {
-         private static final String PREFIX = "data:image/png;base64,";
-         public static final Codec<ServerStatus.Favicon> CODEC = Codec.STRING.comapFlatMap(string -> {
 diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
-index 64beedbc9e07642a20635a839446aa078619b88f..1465e07aab8a6b0c7fc0f4e244d524be78ed8274 100644
+index 1c0f6c3..e7b75dc 100644
 --- a/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -814,6 +814,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -798,6 +798,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
  
      @Override
      public boolean enforceSecureProfile() {
@@ -99,10 +69,10 @@ index 64beedbc9e07642a20635a839446aa078619b88f..1465e07aab8a6b0c7fc0f4e244d524be
          // Paper start - Add setting for proxy online mode status
          return properties.enforceSecureProfile
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index ab8edce68134645d2ff02eeeb449eb7167ba6738..8df1594dee5aa80d4be5c12517a6f759a6c1ab65 100644
+index 2ac7218..95f2c61 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -2957,10 +2957,22 @@ public class ServerGamePacketListenerImpl
+@@ -2857,10 +2857,22 @@ public class ServerGamePacketListenerImpl
  
      public void sendPlayerChatMessage(final PlayerChatMessage message, final ChatType.Bound chatType) {
          // CraftBukkit start - SPIGOT-7262: if hidden we have to send as disguised message. Query whether we should send at all (but changing this may not be expected).
@@ -128,10 +98,10 @@ index ab8edce68134645d2ff02eeeb449eb7167ba6738..8df1594dee5aa80d4be5c12517a6f759
          // Paper start - Ensure that client receives chat packets in the same order that we add into the message signature cache
          synchronized (this.messageSignatureCache) {
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 8eba33f5e3f5312e29b83b8a4ccf9752d12d0fd6..5927ba28af48ee17b709eb3f0df43c5a0dd34cb3 100644
+index 8b6c085..8510753 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -1240,7 +1240,7 @@ public abstract class PlayerList {
+@@ -1222,7 +1222,7 @@ public abstract class PlayerList {
      public void broadcastChatMessage(final PlayerChatMessage message, final Predicate<ServerPlayer> isFiltered, final @Nullable ServerPlayer senderPlayer, final ChatType.Bound chatType, final @Nullable Function<net.kyori.adventure.audience.Audience, Component> unsignedFunction) {
          // Paper end
          boolean trusted = this.verifyChatTrusted(message);
@@ -140,11 +110,6 @@ index 8eba33f5e3f5312e29b83b8a4ccf9752d12d0fd6..5927ba28af48ee17b709eb3f0df43c5a
          OutgoingChatMessage tracked = OutgoingChatMessage.create(message);
          boolean wasFullyFiltered = false;
  
-@@ -1265,6 +1265,7 @@ public abstract class PlayerList {
-     }
- 
-     public boolean verifyChatTrusted(final PlayerChatMessage message) {
-+        if (!org.dreeam.leaf.config.modules.network.ChatMessageSignature.enabled) return true; // Leaf - Mirai - Configurable chat message signatures
-         return message.hasSignature() && !message.hasExpiredServer(Instant.now());
-     }
- 
+-- 
+2.39.1.windows.1
+
