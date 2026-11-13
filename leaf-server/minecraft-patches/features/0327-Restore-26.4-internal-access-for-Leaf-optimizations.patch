@@ -1,0 +1,56 @@
+From 7eda413f1577f2cbb864e6ffea76923b6df9974f Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Fri, 13 Nov 2026 18:45:17 -0500
+Subject: [PATCH] Restore 26.4 internal access needed by Leaf optimizations
+
+Compatibility-only visibility adaptation: Heightmap.setHeight for Lithium CombinedHeightmapUpdate; ServerEntity.entity for Leaf tracker access; public CurrentAccumulator type and constructor for Lithium fluid tracker map. No algorithms changed. Reevaluate when the full Sakura source integration is ported.
+---
+ net/minecraft/server/level/ServerEntity.java           | 2 +-
+ net/minecraft/world/entity/EntityFluidInteraction.java | 4 +++-
+ net/minecraft/world/level/levelgen/Heightmap.java      | 2 +-
+ 3 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/net/minecraft/server/level/ServerEntity.java b/net/minecraft/server/level/ServerEntity.java
+index 4c59c83..86840ab 100644
+--- a/net/minecraft/server/level/ServerEntity.java
++++ b/net/minecraft/server/level/ServerEntity.java
+@@ -59,7 +59,7 @@ public class ServerEntity {
+     public static final int FORCED_POS_UPDATE_PERIOD = 60;
+     private static final int FORCED_TELEPORT_PERIOD = 400;
+     private final ServerLevel level;
+-    private final Entity entity;
++    public final Entity entity; // Fuji 26.4 - preserve Leaf/Sakura tracker access
+     private final UpdateInterval updateInterval;
+     private final boolean trackDelta;
+     private final ServerEntity.Synchronizer synchronizer;
+diff --git a/net/minecraft/world/entity/EntityFluidInteraction.java b/net/minecraft/world/entity/EntityFluidInteraction.java
+index 8e8224c..71d1008 100644
+--- a/net/minecraft/world/entity/EntityFluidInteraction.java
++++ b/net/minecraft/world/entity/EntityFluidInteraction.java
+@@ -288,7 +288,9 @@ public class EntityFluidInteraction {
+         fluidTracker.touchedWhileMoving = true;
+     }
+ 
+-    private static class CurrentAccumulator {
++    public static class CurrentAccumulator { // Fuji 26.4 - retain Lithium TrackerByFluidMap type access
++        public CurrentAccumulator() {}
++
+         private double height;
+         private Vec3 accumulatedCurrent = Vec3.ZERO;
+         private int currentCount;
+diff --git a/net/minecraft/world/level/levelgen/Heightmap.java b/net/minecraft/world/level/levelgen/Heightmap.java
+index 6370f0f..2024349 100644
+--- a/net/minecraft/world/level/levelgen/Heightmap.java
++++ b/net/minecraft/world/level/levelgen/Heightmap.java
+@@ -123,7 +123,7 @@ public class Heightmap {
+         return this.data.get(index) + this.chunk.getMinY();
+     }
+ 
+-    private void setHeight(final int x, final int z, final int height) {
++    public void setHeight(final int x, final int z, final int height) { // Fuji 26.4 - retain Lithium CombinedHeightmapUpdate access
+         this.data.set(getIndex(x, z), height - this.chunk.getMinY());
+     }
+ 
+-- 
+2.39.1.windows.1
+
