@@ -1,19 +1,22 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From 9af3c80403dbecc9586b334bde54a7a4279c6150 Mon Sep 17 00:00:00 2001
 From: Dreeam <61569423+Dreeam-qwq@users.noreply.github.com>
-Date: Fri, 6 Jun 2025 05:44:21 +0800
+Date: Fri, 13 Nov 2026 07:28:30 -0500
 Subject: [PATCH] Do not log invalid flatten text component parse
 
+26.4 Snapshot 8 adaptation: the old Moonrise V4290 converter was replaced by Minecraft UnflattenTextComponentFix. Preserve the Leaf/Gale logging option at the new conversion error site.
 
-diff --git a/ca/spottedleaf/dataconverter/minecraft/versions/V4290.java b/ca/spottedleaf/dataconverter/minecraft/versions/V4290.java
-index 710c31d6765cb83c08af350887ec71127255f2fd..af65c55101f11733b8df60d8169c1f690b869302 100644
---- a/ca/spottedleaf/dataconverter/minecraft/versions/V4290.java
-+++ b/ca/spottedleaf/dataconverter/minecraft/versions/V4290.java
-@@ -255,7 +255,7 @@ public final class V4290 {
-                         return ret;
-                     }
-                 } catch (final JsonParseException ex) {
--                    LOGGER.error("Failed to convert json to nbt: " + unparsedJson, ex);
-+                    if (org.galemc.gale.configuration.GaleGlobalConfiguration.get().logToConsole.invalidLegacyTextComponent) LOGGER.error("Failed to convert json to nbt: " + unparsedJson, ex); // Leaf - Do not log invalid flatten text component parse
-                 }
+diff --git a/net/minecraft/util/datafix/fixes/UnflattenTextComponentFix.java b/net/minecraft/util/datafix/fixes/UnflattenTextComponentFix.java
+index a24672be86dfef27ff268cd74d82af136da6e561..e011199fe1db9bc4f4294e4ab37558230c946631 100644
+--- a/net/minecraft/util/datafix/fixes/UnflattenTextComponentFix.java
++++ b/net/minecraft/util/datafix/fixes/UnflattenTextComponentFix.java
+@@ -44,7 +44,9 @@ public class UnflattenTextComponentFix extends DataFix {
+                 return new Dynamic<>(ops, JsonOps.INSTANCE.convertTo(ops, json));
+             }
+         } catch (Exception e) {
+-            LOGGER.error("Failed to unflatten text component json: {}", jsonString, e);
++            if (org.galemc.gale.configuration.GaleGlobalConfiguration.get().logToConsole.invalidLegacyTextComponent) {
++                LOGGER.error("Failed to unflatten text component json: {}", jsonString, e); // Leaf - configurable invalid legacy text component logging
++            }
+         }
  
-                 return null;
+         return new Dynamic<>(ops, ops.createString(jsonString));
