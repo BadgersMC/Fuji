@@ -23,43 +23,41 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index 1115c56382454c98095641bf5caa372f42b1da5c..b3d22bb0ace48f2fadfc43684f6cb68e7d6d3560 100644
+index ec8e1210a42f207abf95ff76c623db8da3a3e01f..898da0b441fd3de62ec501cf886f95b45d4bdb19 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1258,6 +1258,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1131,6 +1131,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     }
+ 
+     private void recordTaskExecutionTimeWhileWaiting() {
++        final long tickOversleepStart = System.nanoTime(); // Gale - measure task-wait interval
+         final ProfilerFiller profiler = Profiler.get();
  
          profiler.push("moonrise:execute_tasks_until_tick");
-         this.waitingForNextTick = true;
-+        long tickOversleepStart = System.nanoTime(); // Gale - YAPFA - last tick time
-         // implement waitForTasks
-         final boolean isLoggingEnabled = this.isTickTimeLoggingEnabled();
-         try {
-@@ -1290,12 +1291,18 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1167,12 +1168,16 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
                  }
              }
          } finally {
-+            lastTickOversleepTime = (System.nanoTime() - tickOversleepStart) / 1000000L; // Gale - YAPFA - last tick time
++            lastTickOversleepTime = (System.nanoTime() - tickOversleepStart) / 1_000_000L; // Gale - last tick waiting time
              this.waitingForNextTick = false;
          }
          profiler.pop();
      }
      // Paper end - improve tick loop
  
-+    // Gale start - YAPFA - last tick time
-+    public static long lastTickProperTime;
-+    public static long lastTickOversleepTime;
-+    // Gale end - YAPFA - last tick time
++    public static volatile long lastTickProperTime; // Gale - elapsed server tick time in milliseconds
++    public static volatile long lastTickOversleepTime; // Gale - elapsed task-wait interval in milliseconds
 +
      protected void runServer() {
          try {
              if (!this.initServer()) {
-@@ -1724,7 +1731,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1577,7 +1582,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
          this.tickFrame.start();
          // Paper - improve tick loop - moved into runAllTasksAtTickStart
          this.runAllTasksAtTickStart(); // Paper - improve tick loop
-+        long tickProperStart = System.nanoTime(); // Gale - YAPFA - last tick time
++        final long tickProperStart = System.nanoTime(); // Gale - measure tick work
          this.tickServer(sprinting ? () -> false : this::haveTime);
-+        lastTickProperTime = (System.nanoTime() - tickProperStart) / 1_000_000L; // Gale - YAPFA - last tick time
-         // Paper start - rewrite chunk system
-         final Throwable crash = this.chunkSystemCrash;
-         if (crash != null) {
++        lastTickProperTime = (System.nanoTime() - tickProperStart) / 1_000_000L; // Gale - elapsed tick work
+         this.tickFrame.end();
+         this.recordEndOfTick(); // Paper - improve tick loop
+         profiler.pop();

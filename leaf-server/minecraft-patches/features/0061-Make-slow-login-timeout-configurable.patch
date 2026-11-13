@@ -7,10 +7,10 @@ License: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
 Gale - https://galemc.org
 
 diff --git a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
-index 585cb5aafa4992e00f996c97f966d016ffaad3b7..b2b6e85497a495da2c3d33f601d7add2b1318aca 100644
+index db9d56cbe53ea16805c53b3ea9d7d76c8b31d303..e717565a35f392a7cd6321efed3d758dd239e543 100644
 --- a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
-@@ -104,7 +104,10 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
+@@ -115,7 +115,10 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
      }
      public void tickTimeout() {
      // Paper end - login cookie API

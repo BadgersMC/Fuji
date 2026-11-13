@@ -7,24 +7,23 @@ License: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
 Gale - https://galemc.org
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 92f0523dd3705ecd0e8833ed271ecacbd414bf53..3278b70b3bd093e66a090075fb7e1888de2d56d5 100644
+index aa56a83d980e8286954b40d4f638a45f8c36b7e6..5747949319698e6528eb242dc2112e30163d2471 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -1357,8 +1357,15 @@ public abstract class Entity
-                     }
+@@ -1369,8 +1369,14 @@ public abstract class Entity
                  }
- 
--                float blockSpeedFactor = this.getBlockSpeedFactor();
--                this.setDeltaMovement(this.getDeltaMovement().multiply(blockSpeedFactor, 1.0, blockSpeedFactor));
-+                // Gale start - skip negligible planar movement multiplication
-+                Vec3 oldDeltaMovement = this.getDeltaMovement();
-+                if (oldDeltaMovement.x < -1e-6 || oldDeltaMovement.x > 1e-6 || oldDeltaMovement.z < -1e-6 || oldDeltaMovement.z > 1e-6) {
-+                    float blockSpeedFactor = this.getBlockSpeedFactor();
-+                    if (blockSpeedFactor < 1 - 1e-6 || blockSpeedFactor > 1 + 1e-6) {
-+                        this.setDeltaMovement(oldDeltaMovement.multiply(blockSpeedFactor, 1.0, blockSpeedFactor));
-+                    }
-+                }
-+                // Gale end - skip negligible planar movement multiplication
-                 profiler.pop();
              }
+ 
+-            float blockSpeedFactor = this.getBlockSpeedFactor();
+-            this.setDeltaMovement(this.getDeltaMovement().multiply(blockSpeedFactor, 1.0, blockSpeedFactor));
++            // Gale - avoid allocating a new movement vector for negligible planar velocity.
++            final Vec3 oldDeltaMovement = this.getDeltaMovement();
++            if (Math.abs(oldDeltaMovement.x) > 1.0E-6D || Math.abs(oldDeltaMovement.z) > 1.0E-6D) {
++                final float blockSpeedFactor = this.getBlockSpeedFactor();
++                if (Math.abs(blockSpeedFactor - 1.0F) > 1.0E-6F) {
++                    this.setDeltaMovement(oldDeltaMovement.multiply(blockSpeedFactor, 1.0, blockSpeedFactor));
++                }
++            }
+             profiler.pop();
          }
+         } finally {

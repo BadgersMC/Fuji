@@ -1,6 +1,6 @@
 # Fuji experimental port — Frontier Paper 26.4 Snapshot 8
 
-> **Status: FIRST MINECRAFT PATCH PORTED, REMAINING PATCH STACK UNVERIFIED. Not a working or validated server build.**
+> **Status: FIRST 76 MINECRAFT PATCHES RECONCILED AND REGENERATED, REMAINING PATCH STACK UNVERIFIED. Not a compiled or validated server build.**
 >
 > This branch exists to port Fuji 26.3 (Leaf + Sakura + Fuji) onto Fain's experimental Paper 26.4 fork without touching Fuji's 26.3 release line.
 
@@ -40,6 +40,8 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 
 11. **Patch `0040` compatibility triage (2026-11-13).** A read-only, per-file `git apply --check` inspection of the 30-file array-allocation patch found **24 clean hunks**, **5 API/context reworks** (`ServerEntity.java`, `EquipmentSlot.java`, `EquipmentSlotGroup.java`, `Enchantment.java`, `Level.java`), and **1 deleted Moonrise class** (`ChunkEntitySlices.java`). Syntactically clean hunks are not equivalent to safe runtime behavior: several changes reuse public mutable array constants, so mutability/aliasing and thread-safety must be reviewed before applying any of them. `0040` is **not ported**. The audit worktree is isolated and the main branch's 325-patch inventory remains unchanged.
 
+12. **Activation through early performance patches (2026-11-13).** Rebuilt a clean Frontier Snapshot 8 source checkout and replayed Minecraft feature patches **0001–0076 consecutively**, with 26.4 adaptations for `0023` (full EAR2 activation, inactive ticking, TNT/falling-block exemptions, Gale variable wake-up, Purpur AFK), `0040` (safe array substitutions only; avoid public mutable enum arrays, shared mutable singleton arrays, and removed Moonrise classes), `0047`, `0048`, `0053`, `0055`, `0058` (per-player latency bucket and respawn membership fix), `0059`, `0060` (multi-keepalive adapted to Frontier's legacy listener; feature remains off by default), `0065`, `0066`, `0067`, and `0070`. Paperweight **successfully regenerated** the first 76 source patches in the fresh checkout; all 325 patch-file slots were preserved in the experimental repository. Next blocker is `0077-Pufferfish-Optimize-mob-spawning.patch`, followed by `0078`'s legacy Moonrise/EAR dependencies. **No Java compilation, test server, cannon test or production deployment was performed.**
+
 ## Porting checklist
 
 - [x] Create isolated experimental Fuji branch from merged `26.3`.
@@ -51,10 +53,10 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 - [x] Port `0002-Rebrand.patch` and `0003-Gale-configuration.patch`; replay all three patches sequentially on a clean Snapshot 8 source worktree.
 - [x] Port/replay `0004` through `0012`; preserve safe recipe choices and adapt lightning scheduling to 26.4.
 - [x] Port/replay `0013` through `0022`, preserving entity-tick exception behavior.
-- [ ] Port `0023` by adapting legacy activation-range logic to 26.4/Leaf's current entity activation model.
+- [x] Port and regenerate `0023` by adapting EAR2 activation-range logic to 26.4/Leaf's current entity activation model (source-only).
 - [x] Independently replay `0024`–`0039` in disposable worktrees, explicitly omitting blocked `0023`; port logging hooks in `0028` and `0035`.
-- [ ] Port the remaining series `0023`–`0325` **consecutively**, including the 30-file `0040` optimization; validate RNG/crafting behavior in a later test build.
-- [ ] Complete and validate the 303 Minecraft feature patches not yet replayed consecutively (from `0023` onward), resolving obsolete activation and explosion-cache hooks.
+- [ ] Port the remaining series `0077`–`0325` **consecutively**, including replacing obsolete Moonrise optimizations; validate RNG/crafting behavior in a later owner test build.
+- [ ] Complete and validate the 249 Minecraft feature patches not yet replayed consecutively (from `0077` onward), resolving obsolete Moonrise and explosion-cache hooks.
 - [ ] Rebase Leaf's 26.3 patch inventory onto the 26.4 fork source.
 - [ ] Re-apply and adapt Sakura's cannon entity, explosion, redstone, per-region mechanics and configuration functionality.
 - [ ] Re-apply Fuji's maintenance, cannon-height, legacy knockback, instant falling-block stacking, visibility/raytrace, and player-only 20 Hz tracker patches.

@@ -13,10 +13,10 @@ As part of: MultiPaper (https://github.com/MultiPaper/MultiPaper)
 Licensed under: GPL-3.0-only (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/world/level/levelgen/PhantomSpawner.java b/net/minecraft/world/level/levelgen/PhantomSpawner.java
-index ed227f3bcc0a9efe34d8fc32d10d7c7029c3dd5b..ba9a21ab3188a8ff0681e7d368eb4d2161d2e2c7 100644
+index 641fdb19056b93ab0ba479f95a04c5ac670356f4..92708f97c6ffb96c57933dc508a2079ac232462c 100644
 --- a/net/minecraft/world/level/levelgen/PhantomSpawner.java
 +++ b/net/minecraft/world/level/levelgen/PhantomSpawner.java
-@@ -52,8 +52,16 @@ public class PhantomSpawner implements CustomSpawner {
+@@ -51,8 +51,16 @@ public class PhantomSpawner implements CustomSpawner {
                                              BlockPos spawnPos = playerPos.above(20 + random.nextInt(15))
                                                  .east(-10 + random.nextInt(21))
                                                  .south(-10 + random.nextInt(21));
