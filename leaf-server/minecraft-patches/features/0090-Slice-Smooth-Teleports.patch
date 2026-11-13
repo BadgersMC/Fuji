@@ -3,25 +3,24 @@ From: Cryptite <cryptite@gmail.com>
 Date: Sat, 13 Aug 2022 08:58:14 -0500
 Subject: [PATCH] Slice: Smooth Teleports
 
-Original license: MIT
-Original project: https://github.com/Cryptite/Slice
+26.4 compatibility: preserve optional smooth respawn path behind per-player flag and logical dimension-height check. Original Slice MIT implementation credited to Cryptite and HaHaWTH. Runtime client dimension-sync behavior not validated.
 
 Co-authored-by: HaHaWTH <102713261+HaHaWTH@users.noreply.github.com>
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 9d0ccf42e69b41a47affafdf823909238b1f5d25..f23f9a52e43c74a3b7815d668270bc57e1fd2ec5 100644
+index 13c40e0ea42f08c7ff6b56c2826b7d25d79b021b..d4123fe68a31a0e442862d2497a07004cf25686c 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -451,6 +451,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -449,6 +449,7 @@ public class ServerPlayer extends Player {
      private boolean tpsBar = false; // Purpur - Implement TPSBar
      private boolean compassBar = false; // Purpur - Add compass command
      private boolean ramBar = false; // Purpur - Implement rambar commands
-+    public boolean smoothWorldTeleport; // Slice
++    public boolean smoothWorldTeleport; // Slice - opt-in to smooth respawn between compatible dimensions
  
-     // Paper start - rewrite chunk system
-     private ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader.PlayerChunkLoaderData chunkLoader;
+     public ServerPlayer(final MinecraftServer server, final ServerLevel level, final GameProfile gameProfile, final ClientInformation clientInformation) {
+         super(level, gameProfile);
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 2d6fa3f00fb583030c2b7105cf20aa48f5aa8f16..b6d7077264eeddeae2b60257b7c1a43c94fa43d7 100644
+index ae60c092833fb1f366e00a020020ad16b31fba71..afb7af595271bbdfcff98df3c0f243378f863709 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -665,8 +665,10 @@ public abstract class PlayerList {
