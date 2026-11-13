@@ -1,6 +1,6 @@
 # Fuji experimental port — Frontier Paper 26.4 Snapshot 8
 
-> **Status: BASE WIRED, PATCH PORT NOT STARTED. Not a working or validated server build.**
+> **Status: FIRST MINECRAFT PATCH PORTED, REMAINING PATCH STACK UNVERIFIED. Not a working or validated server build.**
 >
 > This branch exists to port Fuji 26.3 (Leaf + Sakura + Fuji) onto Fain's experimental Paper 26.4 fork without touching Fuji's 26.3 release line.
 
@@ -30,7 +30,7 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 3. **No 26.4 release workflow.** Fuji's existing build/release workflow is limited to the `26.3` branch. This experimental branch intentionally does not enable automated server publication.
 4. **First conflict resolved in patch workflow (2026-11-12).** Frontier Paper's `paper-server/build.gradle.kts` moved beyond the 26.3 base. Fuji's applied build script now retains Frontier's Snapshot 8 Mache coordinate and restores Leafclip, `leaf-api`, fork registration, and Leaf dependencies. `rebuildPaperSingleFilePatches` regenerated the patch; a subsequent `applyAllPatches` passed `:applyPaperSingleFilePatches` and the Paper API feature-patch stage. **This is not a complete port or compilation result.**
 5. **Old-Paper-history setup conflict resolved in source preparation (2026-11-12).** Both local and CI initially failed in `:leaf-server:setupMacheSources` with JGit `Missing unknown 8c0b8396...` / `Short read of block`. Fuji's applied build script now omits Paper's transitional `updatingMinecraft.oldPaperCommit`, and the generated single-file patch was rebuilt through Paperweight. The corrected local run progressed through all 101 Mache patches and 950 Paper source patches. Upstream Frontier Paper is unchanged.
-6. **First inherited 26.3 Minecraft feature patch blocked (2026-11-12).** [CI run 43350733551](https://github.com/BadgersMC/Fuji/actions/runs/43350733551) reached `:leaf-server:applyMinecraftFeaturePatches`, but `git am` stopped at `0001-Purpur-Server-Minecraft-Changes.patch`: `invalid object 100644 829f768...` for `io/papermc/paper/entity/activation/ActivationRange.java`, with missing historical blobs for three-way fallback. This approximately 1.37 MB patch changes 345 files. The source changes need deliberate 26.4 porting; do not skip the patch or assume that a different Git apply mode preserves gameplay semantics. No Leaf/Purpur/Sakura 26.4 upstream branch was found in the audit.
+6. **First Minecraft feature patch ported (2026-11-13).** The initial [CI run 43350733551](https://github.com/BadgersMC/Fuji/actions/runs/43350733551) stopped at `0001-Purpur-Server-Minecraft-Changes.patch`. A dedicated three-way source port reconciled 46 conflicting files and reworked two excluded files (sign colors and the deleted activation-range source). Paperweight rebuilt `0001` with the original MIT attribution; its regenerated patch replayed successfully on the 26.4 `file` base in a disposable worktree (344 changed files). **The next 324 Minecraft feature patches are still unported/unverified**, and a full server build has not passed. The deleted `ActivationRange` class's AFK/squid activation behavior, old EAR2 state, and historical explosion collision caches require separate compatibility work; they were not silently carried into the new source.
 
 ## Porting checklist
 
@@ -39,6 +39,8 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 - [x] Record Snapshot 8 Mache and compatibility blockers.
 - [x] Import and pin independent Fuji-Mache source; publish the exact Snapshot 8 Maven artifact locally.
 - [x] Confirm clean-machine CI reproduces Mache publication and full source preparation.
+- [x] Port and replay regenerated `0001-Purpur-Server-Minecraft-Changes.patch` against Frontier Paper Snapshot 8.
+- [ ] Port the remaining 324 Minecraft feature patches, and resolve the obsolete activation and explosion-cache hooks.
 - [ ] Rebase Leaf's 26.3 patch inventory onto the 26.4 fork source.
 - [ ] Re-apply and adapt Sakura's cannon entity, explosion, redstone, per-region mechanics and configuration functionality.
 - [ ] Re-apply Fuji's maintenance, cannon-height, legacy knockback, instant falling-block stacking, visibility/raytrace, and player-only 20 Hz tracker patches.
