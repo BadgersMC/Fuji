@@ -1,6 +1,6 @@
 # Fuji experimental port — Frontier Paper 26.4 Snapshot 8
 
-> **Status: FIRST 76 MINECRAFT PATCHES RECONCILED AND REGENERATED, REMAINING PATCH STACK UNVERIFIED. Not a compiled or validated server build.**
+> **Status: FIRST 77 MINECRAFT PATCHES RECONCILED AND REGENERATED, REMAINING PATCH STACK UNVERIFIED. Not a compiled or validated server build.**
 >
 > This branch exists to port Fuji 26.3 (Leaf + Sakura + Fuji) onto Fain's experimental Paper 26.4 fork without touching Fuji's 26.3 release line.
 
@@ -44,6 +44,8 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 
 13. **Patch `0077` async mob spawning compatibility audit (2026-11-13).** Read-only per-file replay testing against the 76-patch source checkpoint found **3 of 6 files applying cleanly** (`DedicatedServer`, `NaturalSpawner`, `AttributeTrackSampler`) and **3 requiring 26.4 rewrites** (`MinecraftServer`, `ServerChunkCache`, `EnvironmentAttributeSystem`). A disposable scratch worktree contains rejected-hunk evidence and partial source application; none of those partial changes were committed or added to the released patch stack. Snapshot 8's `ServerChunkCache.tickChunks()` creates spawn state synchronously and lacks the former per-player-mob-count branch. The historical Pufferfish path also depends on absent Moonrise nearby-player lookup and performs live entity/world reads from its worker. The inherited `AsyncMobSpawning.enabled` defaults to **true**, so an unreviewed port would be potentially active immediately. **Keep `0077` blocked** until a thread-safe immutable spawn-count input and 26.4-compatible per-player cap implementation are designed and source-reviewed. No new concurrency was enabled, and `0078` onward remain pending.
 
+14. **Safe Pufferfish 0077 snapshot port (2026-11-13).** Implemented and consecutively replayed the original `0077` in the clean source checkout. The world thread now captures immutable mob categories/positions/spawn-costs from loaded chunks, the async worker only aggregates those captured values, and native `LocalMobCapCalculator` counts are restored on the server thread. Thread ownership and cancellation/exception fallback are handled through a single per-world future; the sync path stays intact. The `async-mob-spawning.enabled` default is **false** in this experimental port, pending runtime parity, performance and server-thread-affinity tests. Paperweight **successfully regenerated all 77 patches**; only 0077 changed relative to the prior 76-patch committed checkpoint. An early `:leaf-server:compileJava` attempt in this partial-patch tree failed with 2,715 unrelated/mixed unresolved classes and removed Moonrise references, including CraftBukkit/Leaf internals; a successful build has **not** been established. Patch 0078 is next, with its old AI activation hook requiring API-specific review.
+
 ## Porting checklist
 
 - [x] Create isolated experimental Fuji branch from merged `26.3`.
@@ -58,7 +60,7 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 - [x] Port and regenerate `0023` by adapting EAR2 activation-range logic to 26.4/Leaf's current entity activation model (source-only).
 - [x] Independently replay `0024`–`0039` in disposable worktrees, explicitly omitting blocked `0023`; port logging hooks in `0028` and `0035`.
 - [ ] Port the remaining series `0077`–`0325` **consecutively**, including replacing obsolete Moonrise optimizations; validate RNG/crafting behavior in a later owner test build.
-- [ ] Complete and validate the 249 Minecraft feature patches not yet replayed consecutively (from `0077` onward), resolving obsolete Moonrise and explosion-cache hooks.
+- [ ] Complete and validate the 248 Minecraft feature patches not yet replayed consecutively (from `0078` onward), resolving obsolete Moonrise and explosion-cache hooks.
 - [ ] Rebase Leaf's 26.3 patch inventory onto the 26.4 fork source.
 - [ ] Re-apply and adapt Sakura's cannon entity, explosion, redstone, per-region mechanics and configuration functionality.
 - [ ] Re-apply Fuji's maintenance, cannon-height, legacy knockback, instant falling-block stacking, visibility/raytrace, and player-only 20 Hz tracker patches.
