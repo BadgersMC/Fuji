@@ -28,8 +28,7 @@ public class AFKCommand {
                 ? !player.commandAfkStatus
                 : !player.isAfk();
 
-            if (afk) player.setAfk(true);
-
+            player.setAfk(afk); // Fuji 26.4 - /afk must toggle OFF as well as ON
             player.isCommandAfk = false;
         }
 

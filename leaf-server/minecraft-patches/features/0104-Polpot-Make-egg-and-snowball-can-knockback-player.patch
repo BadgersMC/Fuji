@@ -1,33 +1,42 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From 4c52c41da0b861a5ad0cae964df52f4d804aa49f Mon Sep 17 00:00:00 2001
 From: lilingfengdev <145678359+lilingfengdev@users.noreply.github.com>
 Date: Thu, 18 Jan 2024 13:30:02 +0800
 Subject: [PATCH] Polpot: Make egg and snowball can knockback player
 
-Original project: https://github.com/HaHaWTH/Polpot
-
-Added knockback for snowball and egg.
-Set hurtMarked to true to be able to send velocity changes
-under Entity#sendChanges via ClientboundSetEntityMotionPacket
+Frontier 26.4: Snowball now delegates entity damage to ThrowableBallProjectile; extend its onHitEntity hook instead of double-applying damage. Egg behavior preserved. Both options remain disabled by default. Original project https://github.com/HaHaWTH/Polpot.
+---
+ .../throwableitemprojectile/Snowball.java         | 15 +++++++++++++++
+ .../throwableitemprojectile/ThrownEgg.java        |  9 ++++++++-
+ 2 files changed, 23 insertions(+), 1 deletion(-)
 
 diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java
-index fdf11fa854b26ee31c862c3c3d9c158539048fb7..d251c3a2372e8ab4bec6baa9f7c1dccf86d2580e 100644
+index 47437af..fb49b21 100644
 --- a/net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java
 +++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java
-@@ -57,6 +57,12 @@ public class Snowball extends ThrowableItemProjectile {
-         Entity entity = hitResult.getEntity();
-         int damage = entity.level().purpurConfig.snowballDamage >= 0 ? entity.level().purpurConfig.snowballDamage : entity instanceof Blaze ? 3 : 0; // Purpur - Add configurable snowball damage
-         entity.hurt(this.damageSources().thrown(this, this.getOwner()), damage);
-+        // Leaf start - Polpot - Make snowball can knockback player
-+        if (org.dreeam.leaf.config.modules.gameplay.Knockback.snowballCanKnockback && entity instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-+            serverPlayer.knockback(0.4F, this.getX() - entity.getX(), this.getZ() - entity.getZ(), damageSources().generic(), 0.0F);
-+            serverPlayer.markHurt();
-+        }
-+        // Leaf end - Polpot - Make snowball can knockback player
+@@ -58,6 +58,21 @@ public class Snowball extends ThrowableBallProjectile {
+         }
      }
- 
-     // Purpur start - options to extinguish fire blocks with snowballs - borrowed and modified code from ThrownPotion#onHitBlock and ThrownPotion#dowseFire
+     // Purpur end - options to extinguish fire blocks with snowballs
++    // Leaf - Polpot: Frontier 26.4 moves snowball damage to ThrowableBallProjectile.
++    @Override
++    protected void onHitEntity(final EntityHitResult hitResult) {
++        super.onHitEntity(hitResult);
++        if (this.level().isClientSide()) {
++            return;
++        }
++        if (org.dreeam.leaf.config.modules.gameplay.Knockback.snowballCanKnockback
++            && hitResult.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
++            player.knockback(0.4D, this.getX() - player.getX(), this.getZ() - player.getZ(),
++                this.damageSources().generic(), 0.0F);
++            player.markHurt();
++        }
++    }
++
+     @Override
+     protected int getDamage(final EntityHitResult hitResult) {
+         return hitResult.getEntity().level().purpurConfig.snowballDamage >= 0
 diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java
-index 1d5449090d0649cb03cf87a0175aebedded20132..f299ff73c8c1f27ffca139f2586a6615ec35b6b1 100644
+index 1d54490..f299ff7 100644
 --- a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java
 +++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java
 @@ -60,7 +60,14 @@ public class ThrownEgg extends ThrowableItemProjectile {
@@ -46,3 +55,6 @@ index 1d5449090d0649cb03cf87a0175aebedded20132..f299ff73c8c1f27ffca139f2586a6615
      }
  
      @Override
+-- 
+2.39.1.windows.1
+
