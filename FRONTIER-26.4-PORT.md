@@ -52,3 +52,14 @@ Fuji-Mache's clean Ubuntu CI [run 43346381714](https://github.com/BadgersMC/Fuji
 - Preserve original patch authors' licenses and source attribution.
 - Follow `AGENTS.md`: owner controls compilation, tests, benchmarking and server startup; patch regeneration follows Paperweight applied-source commits.
 - Branch creation and upstream pinning are scaffolding only, **not successful 26.4 compatibility verification**.
+
+## One-week Frontier experiment: release gates
+
+A temporary event can tolerate downtime, **not silent world loss or unintended access to live data**. Before player access:
+
+- Use disposable worlds and separate plugin databases; never upgrade the current 26.3 production worlds in place. Keep offline pre-event backups and verify a restore to an isolated location.
+- Require a successfully applied 26.4 patch series, owner-built server JAR, and smoke tests for player joins, chunk save/reload, inventories, guild claims, raid protections, TNT, sand/concrete stacking, redstone, and cross-version networking.
+- Observe TPS/MSPT, CPU, memory, network bandwidth, entity counts, error logs, and disk writes under staged cannon loads before broadening access.
+- Keep the tested 26.3 server binary untouched and a documented rollback decision. Do not point a 26.3 server at world data saved by 26.4 without a separately validated backward-compatibility path.
+
+**No release or production merge is authorized by this document.**
