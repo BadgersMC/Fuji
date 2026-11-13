@@ -63,6 +63,8 @@ project(":leaf-server") {
 
 paperweight {
     upstreams.paper {
+        // Experimental 26.4 port: use Fain's Frontier Paper snapshot instead of upstream Paper.
+        repo = github("FainNeito", "Frontier-Paper-26.4")
         ref = providers.gradleProperty("paperCommit")
 
         patchFile {

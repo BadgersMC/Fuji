@@ -1,3 +1,6 @@
+> [!CAUTION]
+> **Experimental Fuji 26.4 Snapshot 8 port — not build- or runtime-validated.** This branch targets [Fain's Frontier Paper fork](https://github.com/FainNeito/Frontier-Paper-26.4/tree/dev/26.4). The retained Leaf/Sakura/Fuji 26.3 patches still need porting. See [FRONTIER-26.4-PORT.md](FRONTIER-26.4-PORT.md); the main README below describes the 26.3 development line.
+
 <p align="center">
   <img src="assets/fuji-logo.png" width="200" alt="Fuji logo — Mount Fuji at golden hour with hanging wisteria">
 </p>
