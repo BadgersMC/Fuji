@@ -8,19 +8,24 @@ The Frontier upstream repository contains an unapplied `0003-Moonrise-optimisati
 
 A detached worktree at source commit `4495522` received that patch with `git apply --reject --whitespace=nowarn`. The tool reported **185 cleanly applied file patches**, while **46 files had rejected hunks**. All edits remain in `D:\BadgersMC-Dev\Fuji-26.4-Moonrise-Integration-Scratch`, not in the tracked experimental branch.
 
-## Local resolution progress (uncommitted)
+## Local resolution progress (checkpointed as a local WIP, not pushed)
 
-Five rejected files were manually reconciled against 26.4 source, with the corresponding `.rej` files removed:
+Ten rejected files were manually reconciled against 26.4 source, with the corresponding `.rej` files removed:
 
 - `DoubleTag.java`, `FloatTag.java`, `StringTag.java`: reintroduced the Moonrise `FastNBTWrite` serialization methods while preserving Frontier 26.4 record layouts and numeric values.
 - `NbtIo.java`: restored Moonrise NBT read/write imports required by the already-applied fast paths.
 - `TagKey.java`: interning now uses the actual 26.4 `Identifier.moonrise$intern()` implementation.
+- `PoiSection.java`: implemented the Moonrise POI-section interface and cached optional, preserving the 26.4 POI validity test.
+- `PalettedContainer.java`: exposed the existing indexed setter needed by optimized palette fills; did not change its logic.
+- `ChunkStatusTasks.java`: passed the source chunk position through to 26.4 post-load entity handling, preserving the duplicate-UUID context.
+- `PoiManager.java`: reconciled Moonrise POI chunk ownership, dirty tracking, distance propagation, and the updated SectionStorage override signature.
+- `AcquirePoi.java`: re-targeted Moonrise nearest-POI lookup while preserving Purpur's configurable search radius and the nearest-five limit.
 
-**Remaining rejected files: 41.** Scratch `git diff --check` passes, but compilation, binary NBT parity, chunk lifecycle, packet parity, worldgen parity, cannon gameplay, plugin event order, and data durability are **all unverified**. Do not commit or deploy these partial source changes to the test server.
+**Remaining rejected files: 36.** The partially integrated source was committed **locally only** on `wip/frontier-26.4-moonrise-unfinished` at `97c1375e4a1981b59522f38adbf74969fbed2020` with a prominent DO NOT DEPLOY warning. The 36 remaining `.rej` files remain untracked in that worktree. Scratch source `git diff --check` passed before checkpointing. A separate Gradle source-set override diagnostic stalled before printing its source-directory configuration and was terminated; it produced **no valid Moonrise compile result**. Binary NBT parity, chunk lifecycle, packet parity, worldgen parity, cannon gameplay, plugin event order, and data durability are **all unverified**. This local WIP commit was **not pushed** or merged to the Fuji experimental branch; do not deploy it to the test server.
 
 ## Remaining incompatible source files
 
-| File |
+| Source file |
 |---|
 | `ca/spottedleaf/moonrise/paper/util/BaseChunkSystemHooks.java` |
 | `io/papermc/paper/FeatureHooks.java` |
@@ -31,9 +36,6 @@ Five rejected files were manually reconciled against 26.4 source, with the corre
 | `net/minecraft/server/level/ServerLevel.java` |
 | `net/minecraft/server/level/ServerPlayer.java` |
 | `net/minecraft/server/MinecraftServer.java` |
-| `net/minecraft/world/entity/ai/behavior/AcquirePoi.java` |
-| `net/minecraft/world/entity/ai/village/poi/PoiManager.java` |
-| `net/minecraft/world/entity/ai/village/poi/PoiSection.java` |
 | `net/minecraft/world/entity/Entity.java` |
 | `net/minecraft/world/level/biome/BiomeManager.java` |
 | `net/minecraft/world/level/block/state/StateHolder.java` |
@@ -41,10 +43,8 @@ Five rejected files were manually reconciled against 26.4 source, with the corre
 | `net/minecraft/world/level/chunk/ChunkGenerator.java` |
 | `net/minecraft/world/level/chunk/ImposterProtoChunk.java` |
 | `net/minecraft/world/level/chunk/LevelChunkSection.java` |
-| `net/minecraft/world/level/chunk/PalettedContainer.java` |
 | `net/minecraft/world/level/chunk/ProtoChunk.java` |
 | `net/minecraft/world/level/chunk/status/ChunkPyramid.java` |
-| `net/minecraft/world/level/chunk/status/ChunkStatusTasks.java` |
 | `net/minecraft/world/level/chunk/storage/SectionStorage.java` |
 | `net/minecraft/world/level/chunk/storage/SerializableChunkData.java` |
 | `net/minecraft/world/level/Level.java` |
