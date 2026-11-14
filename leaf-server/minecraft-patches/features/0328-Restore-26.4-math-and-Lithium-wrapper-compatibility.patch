@@ -1,0 +1,92 @@
+From 64646ef3721fdbc23af605f78d6ad5dcf81c258a Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Fri, 13 Nov 2026 19:15:46 -0500
+Subject: [PATCH] Restore 26.4 math and Lithium wrapper compatibility
+
+Restore Mth.clamp int/float/double bridge to Java Math.clamp, heightmap opacity predicate accessor, NonNullList backing access for LithiumStackList, and LevelChunk ticker wrapper visibility for Lithium sleeping block entities. Only access/compatibility adapters; no game algorithms changed. Diagnostic Java compile fell from 359 to 270 errors. Full build still blocked by missing Moonrise and other upstream API changes.
+---
+ net/minecraft/core/NonNullList.java               |  2 +-
+ net/minecraft/util/Mth.java                       | 13 +++++++++++++
+ net/minecraft/world/level/chunk/LevelChunk.java   |  6 +++---
+ net/minecraft/world/level/levelgen/Heightmap.java |  6 ++++++
+ 4 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/net/minecraft/core/NonNullList.java b/net/minecraft/core/NonNullList.java
+index 36474e9..3189367 100644
+--- a/net/minecraft/core/NonNullList.java
++++ b/net/minecraft/core/NonNullList.java
+@@ -8,7 +8,7 @@ import java.util.Objects;
+ import org.jspecify.annotations.Nullable;
+ 
+ public class NonNullList<E> extends AbstractList<E> {
+-    private final List<E> list;
++    public final List<E> list; // Lithium - shared backing list used by its inventory wrapper
+     private final @Nullable E defaultValue;
+ 
+     public static <E> NonNullList<E> create() {
+diff --git a/net/minecraft/util/Mth.java b/net/minecraft/util/Mth.java
+index c6867da..dc1edcb 100644
+--- a/net/minecraft/util/Mth.java
++++ b/net/minecraft/util/Mth.java
+@@ -67,6 +67,19 @@ public class Mth {
+         return (float)Math.sqrt(x);
+     }
+ 
++    // Leaf/Fuji 26.4 compatibility: Mojang moved the clamp overloads to Math.
++    public static int clamp(final int value, final int min, final int max) {
++        return Math.clamp(value, min, max);
++    }
++
++    public static float clamp(final float value, final float min, final float max) {
++        return Math.clamp(value, min, max);
++    }
++
++    public static double clamp(final double value, final double min, final double max) {
++        return Math.clamp(value, min, max);
++    }
++
+     public static int floor(final float v) {
+         return (int)Math.floor(v);
+     }
+diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
+index b78c48c..7f6db3d 100644
+--- a/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -933,14 +933,14 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource {
+         void run(LevelChunk levelChunk);
+     }
+ 
+-    private static class RebindableTickingBlockEntityWrapper implements TickingBlockEntity {
+-        private TickingBlockEntity ticker;
++    public static class RebindableTickingBlockEntityWrapper implements TickingBlockEntity { // Lithium sleeping block entity access
++        public TickingBlockEntity ticker;
+ 
+         private RebindableTickingBlockEntityWrapper(final TickingBlockEntity ticker) {
+             this.ticker = ticker;
+         }
+ 
+-        private void rebind(final TickingBlockEntity ticker) {
++        public void rebind(final TickingBlockEntity ticker) {
+             this.ticker = ticker;
+         }
+ 
+diff --git a/net/minecraft/world/level/levelgen/Heightmap.java b/net/minecraft/world/level/levelgen/Heightmap.java
+index 2024349..b8298ab 100644
+--- a/net/minecraft/world/level/levelgen/Heightmap.java
++++ b/net/minecraft/world/level/levelgen/Heightmap.java
+@@ -27,6 +27,12 @@ public class Heightmap {
+     private static final Predicate<BlockState> MATERIAL_MOTION_BLOCKING = state -> state.is(BlockTags.BLOCKS_MOTION_IN_HEIGHTMAP);
+     private final BitStorage data;
+     private final Predicate<BlockState> isOpaque;
++
++    // Lithium's combined updater uses the same predicate selected by this heightmap.
++    public Predicate<BlockState> isOpaque() {
++        return this.isOpaque;
++    }
++
+     private final ChunkAccess chunk;
+ 
+     public Heightmap(final ChunkAccess chunk, final Heightmap.Types heightmapType) {
+-- 
+2.39.1.windows.1
+
