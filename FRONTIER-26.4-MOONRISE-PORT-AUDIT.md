@@ -10,7 +10,7 @@ A detached worktree at source commit `4495522` received that patch with `git app
 
 ## Local resolution progress (checkpointed as a local WIP, not pushed)
 
-Ten rejected files were manually reconciled against 26.4 source, with the corresponding `.rej` files removed:
+Twelve rejected files were manually reconciled against 26.4 source, with the corresponding `.rej` files removed:
 
 - `DoubleTag.java`, `FloatTag.java`, `StringTag.java`: reintroduced the Moonrise `FastNBTWrite` serialization methods while preserving Frontier 26.4 record layouts and numeric values.
 - `NbtIo.java`: restored Moonrise NBT read/write imports required by the already-applied fast paths.
@@ -20,8 +20,10 @@ Ten rejected files were manually reconciled against 26.4 source, with the corres
 - `ChunkStatusTasks.java`: passed the source chunk position through to 26.4 post-load entity handling, preserving the duplicate-UUID context.
 - `PoiManager.java`: reconciled Moonrise POI chunk ownership, dirty tracking, distance propagation, and the updated SectionStorage override signature.
 - `AcquirePoi.java`: re-targeted Moonrise nearest-POI lookup while preserving Purpur's configurable search radius and the nearest-five limit.
+- `ServerPlayer.java`: fulfilled the Moonrise player chunk-loader state contract using Frontier's existing real-player flag.
+- `Level.java`: initialized cached dimension height/section boundaries and delegated entity queries/counts to Moonrise's regionized lookup. Also adapted `PaperHooks.java` to keep vanilla's Ender Dragon multipart parent-exclusion behavior.
 
-**Remaining rejected files: 36.** The partially integrated source was committed **locally only** on `wip/frontier-26.4-moonrise-unfinished` at `97c1375e4a1981b59522f38adbf74969fbed2020` with a prominent DO NOT DEPLOY warning. The 36 remaining `.rej` files remain untracked in that worktree. Scratch source `git diff --check` passed before checkpointing. A separate Gradle source-set override diagnostic stalled before printing its source-directory configuration and was terminated; it produced **no valid Moonrise compile result**. Binary NBT parity, chunk lifecycle, packet parity, worldgen parity, cannon gameplay, plugin event order, and data durability are **all unverified**. This local WIP commit was **not pushed** or merged to the Fuji experimental branch; do not deploy it to the test server.
+**Remaining rejected files: 34.** The partially integrated source was committed **locally only** on `wip/frontier-26.4-moonrise-unfinished` at initial checkpoint `97c1375e4a1981b59522f38adbf74969fbed2020` and subsequent WIP `460cb7a45ba6cf166062e0c4d7902cd6220a66a2`, both marked DO NOT DEPLOY. The 34 remaining `.rej` files remain untracked in that worktree. Scratch source `git diff --check` passed before checkpointing. A separate Gradle source-set override diagnostic stalled before printing its source-directory configuration and was terminated; it produced **no valid Moonrise compile result**. Binary NBT parity, chunk lifecycle, packet parity, worldgen parity, cannon gameplay, plugin event order, and data durability are **all unverified**. This local WIP commit was **not pushed** or merged to the Fuji experimental branch; do not deploy it to the test server.
 
 ## Remaining incompatible source files
 
@@ -34,7 +36,6 @@ Ten rejected files were manually reconciled against 26.4 source, with the corres
 | `net/minecraft/server/level/DistanceManager.java` |
 | `net/minecraft/server/level/ServerChunkCache.java` |
 | `net/minecraft/server/level/ServerLevel.java` |
-| `net/minecraft/server/level/ServerPlayer.java` |
 | `net/minecraft/server/MinecraftServer.java` |
 | `net/minecraft/world/entity/Entity.java` |
 | `net/minecraft/world/level/biome/BiomeManager.java` |
@@ -47,7 +48,6 @@ Ten rejected files were manually reconciled against 26.4 source, with the corres
 | `net/minecraft/world/level/chunk/status/ChunkPyramid.java` |
 | `net/minecraft/world/level/chunk/storage/SectionStorage.java` |
 | `net/minecraft/world/level/chunk/storage/SerializableChunkData.java` |
-| `net/minecraft/world/level/Level.java` |
 | `net/minecraft/world/level/levelgen/Beardifier.java` |
 | `net/minecraft/world/level/levelgen/Heightmap.java` |
 | `net/minecraft/world/level/levelgen/material/MaterialRuleContext.java` |
