@@ -1,0 +1,26 @@
+From 231741b783559b1eb1c1777e1a5f8f4e4048f2a8 Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Fri, 13 Nov 2026 19:21:46 -0500
+Subject: [PATCH] Restore Sakura cannon duration config type on Frontier 26.4
+
+Paper changed Duration from io.papermc.paper.configuration.type.time to type. Keep the existing serializer and duration semantics. No cannon runtime claims.
+---
+ .../me/samsuik/sakura/configuration/WorldConfiguration.java     | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java b/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
+index 2ea5523f1..58ca75a70 100644
+--- a/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
++++ b/src/main/java/me/samsuik/sakura/configuration/WorldConfiguration.java
+@@ -4,7 +4,7 @@ import io.papermc.paper.configuration.Configuration;
+ import io.papermc.paper.configuration.ConfigurationPart;
+ import io.papermc.paper.configuration.NestedSetting;
+ import io.papermc.paper.configuration.PaperConfigurations;
+-import io.papermc.paper.configuration.type.time.Duration;
++import io.papermc.paper.configuration.type.Duration;
+ import io.papermc.paper.configuration.type.number.DoubleOr;
+ import io.papermc.paper.configuration.type.number.IntOr;
+ import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+-- 
+2.39.1.windows.1
+
