@@ -1,4 +1,4 @@
-From 366c73fed81078fd138ca57f9e17959f027bc836 Mon Sep 17 00:00:00 2001
+From 5439b76f1063f01f1e921cf4a1ae4df0e15afcd6 Mon Sep 17 00:00:00 2001
 From: Dreeam <61569423+Dreeam-qwq@users.noreply.github.com>
 Date: Fri, 13 Nov 2026 15:20:13 -0500
 Subject: [PATCH] Configurable unknown command message
@@ -9,10 +9,10 @@ Frontier 26.4: integrate MiniMessage placeholders without changing native comman
  1 file changed, 20 insertions(+), 4 deletions(-)
 
 diff --git a/net/minecraft/commands/Commands.java b/net/minecraft/commands/Commands.java
-index 706d19c..e2b8a45 100644
+index 646fa1b..02ee86a 100644
 --- a/net/minecraft/commands/Commands.java
 +++ b/net/minecraft/commands/Commands.java
-@@ -413,6 +413,7 @@ public class Commands {
+@@ -410,6 +410,7 @@ public class Commands {
              final net.kyori.adventure.text.TextComponent.Builder builder = net.kyori.adventure.text.Component.text();
              builder.color(net.kyori.adventure.text.format.NamedTextColor.RED)
                  .append(io.papermc.paper.command.brigadier.MessageComponentSerializer.message().deserialize(e.getRawMessage()));
@@ -20,7 +20,7 @@ index 706d19c..e2b8a45 100644
              if (e.getInput() != null && e.getCursor() >= 0) {
                  int cursor = Math.min(e.getInput().length(), e.getCursor());
                  MutableComponent context = Component.empty()
-@@ -431,11 +432,26 @@ public class Commands {
+@@ -428,11 +429,26 @@ public class Commands {
                  context.append(Component.translatable("command.context.here").withStyle(ChatFormatting.RED, ChatFormatting.ITALIC));
                  // Paper start - Add UnknownCommandEvent
                  // sender.sendFailure(context);
@@ -46,7 +46,7 @@ index 706d19c..e2b8a45 100644
 +                }
 +            }
 +            org.bukkit.event.command.UnknownCommandEvent event = new org.bukkit.event.command.UnknownCommandEvent(
-+                sender, command.commandString(), "default".equals(configured) && org.spigotmc.SpigotConfig.unknownCommandMessage.isEmpty() ? null : shownMessage
++                sender, command.commandString(), shownMessage // Frontier 26.4 removed SpigotConfig.unknownCommandMessage; keep vanilla error by default.
 +            );
              org.bukkit.Bukkit.getServer().getPluginManager().callEvent(event);
              if (event.message() != null) {

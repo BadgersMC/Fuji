@@ -1,0 +1,45 @@
+From 4495522d61335eaeab626287d0ddf9bcb260d40c Mon Sep 17 00:00:00 2001
+From: BadgersMC <blrusso18@gmail.com>
+Date: Fri, 13 Nov 2026 19:18:54 -0500
+Subject: [PATCH] Fix 26.4 login disconnect logging without skipping network
+ disconnect
+
+Gale original null-ID log suppression used an early return inside disconnect, potentially skipping the actual disconnect. Use the 26.4 resolvedUserProfile field, suppress only the log line, and always perform packet and connection disconnect. Preserves Velocity login validation and disconnect delivery.
+---
+ .../ServerLoginPacketListenerImpl.java        | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
+
+diff --git a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
+index 1e5b8da..8bd13db 100644
+--- a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
+@@ -148,15 +148,18 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
+     // Paper end
+     public void disconnect(final Component component) {
+         try {
+-            // Gale start - Pufferfish - do not log disconnections with null id
+-            if (!org.galemc.gale.configuration.GaleGlobalConfiguration.get().logToConsole.nullIdDisconnections && this.authenticatedProfile != null && this.authenticatedProfile.id() == null) {
+-                String reasonString = component.getString();
+-                if ("Disconnected".equals(reasonString) || Component.translatable("multiplayer.disconnect.generic").getString().equals(reasonString)) {
+-                    return;
+-                }
++            // Gale start - Pufferfish - omit only the log line for generic null-ID disconnects.
++            // Never return early: the connection must still receive its disconnect packet.
++            final String reasonString = component.getString();
++            final boolean suppressLog = !org.galemc.gale.configuration.GaleGlobalConfiguration.get().logToConsole.nullIdDisconnections
++                && this.resolvedUserProfile != null
++                && this.resolvedUserProfile.id() == null
++                && ("Disconnected".equals(reasonString)
++                    || Component.translatable("multiplayer.disconnect.generic").getString().equals(reasonString));
++            if (!suppressLog) {
++                LOGGER.info("Disconnecting {}: {}", this.getUserName(), reasonString);
+             }
+-            // Gale end - Pufferfish - do not log disconnections with null id
+-            LOGGER.info("Disconnecting {}: {}", this.getUserName(), component.getString());
++            // Gale end - Pufferfish
+             this.connection.send(new ClientboundLoginDisconnectPacket(component));
+             this.connection.disconnect(component);
+         } catch (Exception e) {
+-- 
+2.39.1.windows.1
+
